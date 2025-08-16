@@ -1,0 +1,2 @@
+html, body { margin: 0; height: 100%; background: #111; color: #eee; display: grid; place-items: center; }
+canvas { background: #222; border: 1px solid #333; }

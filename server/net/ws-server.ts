@@ -1,0 +1,210 @@
+import { eventBus } from "../core/event-bus";
+import { CmdCast, CmdJoin, CmdMove, CmdType } from "../core/types/cmd.type";
+import { World } from "../core/world";
+import { Vec2 } from "../core/types/vec2.type";
+import { SpawnManager } from "../core/spawn-manager";
+import { Player } from "../entities/player";
+import {
+  PlayerJoinedEvent,
+  SessionStartedEvent,
+  PlayerMoveCmdEvent,
+  PlayerCastCmdEvent,
+  PlayerLeaveCmdEvent,
+  PlayerAimCmdEvent,
+  PlayerRespawnCmdEvent
+} from "../events";
+import { matchSystem } from "../systems/match.js";
+import WebSocket, { WebSocketServer } from "ws";
+
+const DEFAULT_WS_PORT = 8081;
+
+// Original spawn points adjusted to respect margins
+const ORIGINAL_SPAWN_POINTS: Vec2[] = [
+  { x: 100, y: 100 },
+  { x: 1800, y: 100 },
+  { x: 100, y: 1000 },
+  { x: 1800, y: 1000 },
+];
+
+// Create spawn manager for players with smaller margins since they are more strategic
+const playerSpawnManager = new SpawnManager({
+  minDistanceFromPlayers: 120, // Less distance required for players
+  margins: {
+    left: 80,
+    right: 80,
+    top: 80,
+    bottom: 80,
+  },
+});
+
+// Adjust original spawn points to respect margins and use as fallbacks
+const SAFE_SPAWN_POINTS = playerSpawnManager.adjustSpawnPointsToMargins(ORIGINAL_SPAWN_POINTS);
+
+function randomSpawn(): Vec2 { 
+  // Try to find a safe position first
+  const safePos = playerSpawnManager.findSafeSpawnPosition();
+  
+  // If safe position found, use it, otherwise fallback to adjusted spawn points
+  if (playerSpawnManager.isWithinSpawnBounds(safePos) && !playerSpawnManager.isPositionBlocked(safePos)) {
+    return safePos;
+  }
+  
+  // Fallback to one of the safe spawn points
+  return { ...SAFE_SPAWN_POINTS[Math.floor(Math.random() * SAFE_SPAWN_POINTS.length)] };
+}
+
+const START_VEL: Vec2 = { x: 0, y: 0 };
+
+const connToPlayer = new WeakMap<WebSocket, string>();
+const playerToConn = new Map<string, WebSocket>();
+const playerNames = new Map<string, string>();
+const deadUntil = new Map<string, number>();
+
+export function createWsServer(port = DEFAULT_WS_PORT) {
+  const wss = new WebSocketServer({ port });
+
+  // Track death timestamps and notify the dead player with a respawn timestamp
+  eventBus.on('player:die', (e: { type: 'player:die'; playerId: string }) => {
+    const until = Date.now() + 5000;
+    deadUntil.set(e.playerId, until);
+    const ws = playerToConn.get(e.playerId);
+    if (ws && ws.readyState === 1) {
+      ws.send(JSON.stringify({ type: 'player:dead', until }));
+    }
+  });
+
+  wss.on('connection', (ws) => {
+    ws.on('message', (raw) => {
+      let msg: { type: CmdType };
+      try { msg = JSON.parse(String(raw)); } catch { return; }
+
+      // if (msg?.type?.startsWith('cmd:')) eventBus.emit({ ...msg, _ws: ws });
+      if (msg.type === 'cmd:join') {
+        const cmd = msg as CmdJoin;
+        const id = crypto.randomUUID();
+        const name = cmd.name || 'Anon';
+
+        const spawn = randomSpawn();
+        const player = new Player(id, name, spawn, START_VEL);
+        World.players.set(id, player);
+
+        connToPlayer.set(ws, id);
+        playerToConn.set(id, ws);
+        playerNames.set(id, name);
+        deadUntil.delete(id);
+        const playersInfo: { id: string; name: string; pos: Vec2 }[] = [];
+
+        // отправить информацию о других игроках только этому клиенту
+
+        for (const [pid, player] of World.players.entries()) {
+          if (pid === id) continue;
+          ws.send(new PlayerJoinedEvent(pid, player.name).toString());
+          if (pid !== id) {
+            playersInfo.push({ id: pid, name: player.name, pos: { ...player.pos } });
+          }
+        }
+
+        // Get current match info for the session
+        const currentMatch = matchSystem.getCurrentMatch();
+        const matchInfo = currentMatch ? {
+          id: currentMatch.id,
+          mode: currentMatch.mode,
+          phase: currentMatch.phase,
+          startsAt: currentMatch.startsAt,
+          endsAt: currentMatch.endsAt,
+        } : undefined;
+
+        // Always send session:started to the joining client (players list may be empty)
+        ws.send(new SessionStartedEvent(name, id, playersInfo, matchInfo).toString());
+
+        eventBus.emit(new PlayerJoinedEvent(id, name).toEmit());
+        return;
+      }
+
+      const id = connToPlayer.get(ws);
+      if (!id) return;
+
+      if (msg.type === 'cmd:move') {
+        const cmd = msg as CmdMove;
+        eventBus.emit(new PlayerMoveCmdEvent(id, cmd.dir).toEmit());
+        return
+      }
+
+      if (msg.type === 'cmd:cast') {
+        const cmd = msg as CmdCast;
+        eventBus.emit(new PlayerCastCmdEvent(id, cmd.skill).toEmit());
+        return
+      }
+
+      if (msg.type === 'cmd:respawn') {
+        // First emit the respawn command event
+        eventBus.emit(new PlayerRespawnCmdEvent(id).toEmit());
+        
+        const now = Date.now();
+        const until = deadUntil.get(id) ?? 0;
+        const existingPlayer = World.players.get(id);
+        if (existingPlayer && !existingPlayer.isDead) return; // already alive
+        if (now < until) return; // cooldown not finished
+        const name = playerNames.get(id) || 'Anon';
+        const spawn = randomSpawn();
+        
+        if (existingPlayer) {
+          // Use the Player class respawn method (preserves scores automatically)
+          existingPlayer.respawn(spawn);
+        } else {
+          // Create new player (shouldn't happen but failsafe)
+          const newPlayer = new Player(id, name, spawn, START_VEL);
+          World.players.set(id, newPlayer);
+        }
+        
+        deadUntil.delete(id);
+        // Broadcast as a normal join so all clients (including self) re-add the player
+        eventBus.emit(new PlayerJoinedEvent(id, name).toEmit());
+        return;
+      }
+
+      if (msg.type === 'cmd:aim') {
+        const data = msg as { type: 'cmd:aim'; dir: Vec2 };
+        const p = World.players.get(id);
+        if (!p) return;
+        
+        // Use Player class method to set face direction
+        p.setFaceDirection(data.dir);
+        
+        // Emit the aim command event
+        eventBus.emit(new PlayerAimCmdEvent(id, p.faceTarget!).toEmit());
+        return;
+      }
+
+      if (msg.type?.startsWith('cmd:')) console.log(`Unhandled command ${msg.type}: ${msg}`); // TODO What to do here
+
+    });
+
+    ws.on('close', () => {
+      const id = connToPlayer.get(ws);
+      if (id) {
+        connToPlayer.delete(ws);
+        playerToConn.delete(id);
+        playerNames.delete(id);
+        deadUntil.delete(id);
+        eventBus.emit(new PlayerLeaveCmdEvent(id).toEmit());
+      }
+    });
+
+    ws.send(JSON.stringify({ type: 'connected', ts: Date.now() }));
+    // Send map to this client
+    try {
+      ws.send(JSON.stringify({ type: 'map:loaded', obstacles: World.map.obstacles }));
+      // also send currently spawned pickups so late joiners see them
+      for (const pk of World.pickups.values()) {
+        ws.send(JSON.stringify({ type: 'pickup:spawned', id: pk.id, pos: pk.pos, kind: pk.kind }));
+      }
+    } catch (err) {
+      console.warn('Failed to send map/pickups:', err);
+    }
+  });
+
+  console.log(`WS listening ws://localhost:${port}`);
+
+  return wss;
+}
