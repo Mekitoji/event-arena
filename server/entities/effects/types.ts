@@ -3,12 +3,12 @@ import { Vec2 } from "../../core/types/vec2.type";
 /**
  * Base interface for all effects that can be applied to a player
  */
-export interface IEffect {
+export interface IEffect<T extends EffectData = EffectData> {
   readonly id: string;
   readonly type: EffectType;
   readonly startTime: number;
   readonly duration: number;
-  readonly data: EffectData;
+  readonly data: T;
 
   /**
    * Update the effect. Returns false if the effect should be removed.

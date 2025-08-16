@@ -3,25 +3,25 @@ import { IEffect, EffectType, EffectData, EffectJSON } from './types';
 /**
  * Base implementation of the IEffect interface
  */
-export abstract class BaseEffect implements IEffect {
+export abstract class BaseEffect<T extends EffectData = EffectData> implements IEffect<T> {
   public readonly id: string;
   public readonly type: EffectType;
   public readonly startTime: number;
   public readonly duration: number;
-  public readonly data: EffectData;
+  public readonly data: T;
 
   constructor(
     id: string,
     type: EffectType,
     startTime: number,
     duration: number,
-    data: EffectData
+    data: T
   ) {
     this.id = id;
     this.type = type;
     this.startTime = startTime;
     this.duration = duration;
-    this.data = { ...data };
+    this.data = { ...data } as T;
   }
 
   /**

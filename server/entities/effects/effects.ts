@@ -18,7 +18,7 @@ import {
 /**
  * Damage flash effect shown when a player takes damage
  */
-export class DamageFlashEffect extends BaseEffect {
+export class DamageFlashEffect extends BaseEffect<DamageFlashData> {
   constructor(id: string, startTime: number, damage: number, flashColor: string = '#ff0000') {
     const data: DamageFlashData = {
       damage,
@@ -37,8 +37,7 @@ export class DamageFlashEffect extends BaseEffect {
 
     // Update alpha based on progress (fade out)
     const progress = this.getProgress(currentTime);
-    const data = this.data as DamageFlashData;
-    data.alpha = 0.6 * (1 - this.easeOutQuad(progress));
+    this.data.alpha = 0.6 * (1 - this.easeOutQuad(progress));
 
     return true;
   }
@@ -47,7 +46,7 @@ export class DamageFlashEffect extends BaseEffect {
 /**
  * Death ring effect shown when a player dies
  */
-export class DeathRingEffect extends BaseEffect {
+export class DeathRingEffect extends BaseEffect<DeathRingData> {
   constructor(id: string, startTime: number, position: Vec2, maxRadius: number = 26, ringColor: string = '#000000') {
     const data: DeathRingData = {
       position: { ...position },
@@ -67,10 +66,9 @@ export class DeathRingEffect extends BaseEffect {
 
     // Update alpha and radius based on progress
     const progress = this.getProgress(currentTime);
-    const data = this.data as DeathRingData;
-    data.alpha = 1 - progress; // Fade out over time
+    this.data.alpha = 1 - progress; // Fade out over time
     // Radius grows from 8 to maxRadius
-    data.intensity = 8 + progress * (data.maxRadius - 8);
+    this.data.intensity = 8 + progress * (this.data.maxRadius - 8);
 
     return true;
   }
@@ -79,8 +77,7 @@ export class DeathRingEffect extends BaseEffect {
 /**
  * Dash trail effect shown when a player is dashing
  */
-export class DashTrailEffect extends BaseEffect {
-  data: DashTrailData;
+export class DashTrailEffect extends BaseEffect<DashTrailData> {
   constructor(id: string, startTime: number, duration: number, trailColor: string = '#9696ff') {
     const data: DashTrailData = {
       positions: [],
@@ -94,13 +91,12 @@ export class DashTrailEffect extends BaseEffect {
   }
 
   public addPosition(pos: Vec2, timestamp: number): void {
-    const data = this.data as DashTrailData;
-    data.positions.push({ pos: { ...pos }, timestamp });
+    this.data.positions.push({ pos: { ...pos }, timestamp });
 
     // Keep only positions within maxTrailLength
-    const cutoff = timestamp - data.maxTrailLength;
-    while (data.positions.length > 0 && data.positions[0].timestamp < cutoff) {
-      data.positions.shift();
+    const cutoff = timestamp - this.data.maxTrailLength;
+    while (this.data.positions.length > 0 && this.data.positions[0].timestamp < cutoff) {
+      this.data.positions.shift();
     }
   }
 
@@ -110,10 +106,9 @@ export class DashTrailEffect extends BaseEffect {
     }
 
     // Clean up old positions
-    const data = this.data as DashTrailData;
-    const cutoff = currentTime - data.maxTrailLength;
-    while (data.positions.length > 0 && data.positions[0].timestamp < cutoff) {
-      data.positions.shift();
+    const cutoff = currentTime - this.data.maxTrailLength;
+    while (this.data.positions.length > 0 && this.data.positions[0].timestamp < cutoff) {
+      this.data.positions.shift();
     }
 
     return true;
@@ -123,7 +118,7 @@ export class DashTrailEffect extends BaseEffect {
 /**
  * Explosion effect for rocket impacts and area damage
  */
-export class ExplosionEffect extends BaseEffect {
+export class ExplosionEffect extends BaseEffect<ExplosionData> {
   constructor(id: string, startTime: number, position: Vec2, radius: number, damage: number, explosionColor: string = '#ff7800') {
     const data: ExplosionData = {
       position: { ...position },
@@ -144,9 +139,8 @@ export class ExplosionEffect extends BaseEffect {
 
     // Update alpha and radius based on progress
     const progress = this.getProgress(currentTime);
-    const data = this.data as ExplosionData;
-    data.alpha = 1 - progress; // Fade out
-    data.intensity = progress; // Radius grows from 0 to full radius
+    this.data.alpha = 1 - progress; // Fade out
+    this.data.intensity = progress; // Radius grows from 0 to full radius
 
     return true;
   }
@@ -155,7 +149,7 @@ export class ExplosionEffect extends BaseEffect {
 /**
  * Spark effect for projectile bounces
  */
-export class SparkEffect extends BaseEffect {
+export class SparkEffect extends BaseEffect<SparkData> {
   constructor(id: string, startTime: number, position: Vec2, direction: Vec2, sparkColor: string = '#ffc864') {
     const data: SparkData = {
       position: { ...position },
@@ -175,8 +169,7 @@ export class SparkEffect extends BaseEffect {
 
     // Fade out over time
     const progress = this.getProgress(currentTime);
-    const data = this.data as SparkData;
-    data.alpha = 1 - progress;
+    this.data.alpha = 1 - progress;
 
     return true;
   }
@@ -185,7 +178,7 @@ export class SparkEffect extends BaseEffect {
 /**
  * Knockback effect for camera shake and visual feedback
  */
-export class KnockbackEffect extends BaseEffect {
+export class KnockbackEffect extends BaseEffect<KnockbackData> {
   constructor(id: string, startTime: number, velocity: Vec2, power: number) {
     const data: KnockbackData = {
       velocity: { ...velocity },
@@ -204,8 +197,7 @@ export class KnockbackEffect extends BaseEffect {
 
     // Reduce intensity over time
     const progress = this.getProgress(currentTime);
-    const data = this.data as KnockbackData;
-    data.intensity = data.power * (1 - this.easeOutQuad(progress));
+    this.data.intensity = this.data.power * (1 - this.easeOutQuad(progress));
 
     return true;
   }
@@ -214,7 +206,7 @@ export class KnockbackEffect extends BaseEffect {
 /**
  * Camera shake effect
  */
-export class CameraShakeEffect extends BaseEffect {
+export class CameraShakeEffect extends BaseEffect<CameraShakeData> {
   constructor(id: string, startTime: number, amplitude: number, frequency: number = 30, duration: number = 120) {
     const data: CameraShakeData = {
       amplitude,
@@ -233,8 +225,7 @@ export class CameraShakeEffect extends BaseEffect {
 
     // Reduce shake amplitude over time
     const progress = this.getProgress(currentTime);
-    const data = this.data as CameraShakeData;
-    data.intensity = data.amplitude * (1 - this.easeOutQuad(progress));
+    this.data.intensity = this.data.amplitude * (1 - this.easeOutQuad(progress));
 
     return true;
   }
@@ -243,7 +234,7 @@ export class CameraShakeEffect extends BaseEffect {
 /**
  * Heal pulse effect shown when a player is healed
  */
-export class HealPulseEffect extends BaseEffect {
+export class HealPulseEffect extends BaseEffect<HealPulseData> {
   constructor(id: string, startTime: number, healAmount: number, pulseColor: string = '#00ff00') {
     const data: HealPulseData = {
       healAmount,
@@ -262,8 +253,7 @@ export class HealPulseEffect extends BaseEffect {
 
     // Pulsing effect
     const t = this.getNormalizedTime(currentTime);
-    const data = this.data as HealPulseData;
-    data.alpha = 0.8 * (1 + 0.3 * this.sine(t, 3)) * (1 - t);
+    this.data.alpha = 0.8 * (1 + 0.3 * this.sine(t, 3)) * (1 - t);
 
     return true;
   }
@@ -272,7 +262,7 @@ export class HealPulseEffect extends BaseEffect {
 /**
  * Shield glow effect for players with shield buff
  */
-export class ShieldGlowEffect extends BaseEffect {
+export class ShieldGlowEffect extends BaseEffect<ShieldGlowData> {
   constructor(id: string, startTime: number, duration: number, glowColor: string = '#ffff88') {
     const data: ShieldGlowData = {
       glowColor,
@@ -291,8 +281,7 @@ export class ShieldGlowEffect extends BaseEffect {
 
     // Pulsing glow effect
     const t = this.getNormalizedTime(currentTime);
-    const data = this.data as ShieldGlowData;
-    data.alpha = 0.4 * (1 + 0.5 * this.sine(t, data.pulseSpeed));
+    this.data.alpha = 0.4 * (1 + 0.5 * this.sine(t, this.data.pulseSpeed));
 
     return true;
   }
@@ -301,7 +290,7 @@ export class ShieldGlowEffect extends BaseEffect {
 /**
  * Haste trail effect for players with speed buff
  */
-export class HasteTrailEffect extends BaseEffect {
+export class HasteTrailEffect extends BaseEffect<HasteTrailData> {
   constructor(id: string, startTime: number, duration: number, speedMultiplier: number, trailColor: string = '#00ffff') {
     const data: HasteTrailData = {
       trailColor,
@@ -320,8 +309,7 @@ export class HasteTrailEffect extends BaseEffect {
 
     // Fluctuating trail intensity based on speed
     const t = this.getNormalizedTime(currentTime);
-    const data = this.data as HasteTrailData;
-    data.alpha = 0.3 * (1 + 0.4 * this.sine(t, 4));
+    this.data.alpha = 0.3 * (1 + 0.4 * this.sine(t, 4));
 
     return true;
   }
@@ -330,7 +318,7 @@ export class HasteTrailEffect extends BaseEffect {
 /**
  * Invulnerability effect for players with iframes
  */
-export class InvulnerabilityEffect extends BaseEffect {
+export class InvulnerabilityEffect extends BaseEffect<InvulnerabilityData> {
   constructor(id: string, startTime: number, duration: number, flickerRate: number = 8) {
     const data: InvulnerabilityData = {
       flickerRate,
@@ -348,8 +336,7 @@ export class InvulnerabilityEffect extends BaseEffect {
 
     // Flickering effect
     const t = this.getNormalizedTime(currentTime);
-    const data = this.data as InvulnerabilityData;
-    data.alpha = Math.abs(this.sine(t, data.flickerRate));
+    this.data.alpha = Math.abs(this.sine(t, this.data.flickerRate));
 
     return true;
   }
