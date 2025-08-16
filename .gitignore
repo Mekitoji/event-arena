@@ -149,3 +149,6 @@ coverage/
 # Temporary files
 tmp/
 temp/
+
+# AI Assistant configuration
+WARP.md

@@ -1,5 +1,6 @@
 import { Vec2 } from "../core/types/vec2.type";
 import { EffectManager, EffectFactory, EffectCombinations, EffectType, DashTrailEffect, IEffect } from "./effects";
+import { PlayerStats } from "./player-stats";
 
 export class Player {
   public readonly id: string;
@@ -20,13 +21,8 @@ export class Player {
   public hasteFactor?: number;
   public shieldUntil?: number;
 
-  // K/D/A scores
-  public kills: number;
-  public deaths: number;
-  public assists: number;
-
-  // Kill streak tracking
-  public streak: number;
+  // Player statistics
+  public stats: PlayerStats;
 
   // Death state (keep player in world but mark as dead)
   public isDead?: boolean;
@@ -50,13 +46,10 @@ export class Player {
     this.faceTarget = { ...initialFace };
     this.hp = 100;
     this.cd = {};
-    this.kills = 0;
-    this.deaths = 0;
-    this.assists = 0;
-    this.streak = 0;
     this.isDead = false;
 
-    // Initialize effect manager
+    // Initialize stats and effect manager
+    this.stats = new PlayerStats();
     this.effects = new EffectManager(id);
   }
 
@@ -85,6 +78,9 @@ export class Player {
   ): boolean {
     const wasAlive = this.isAlive();
     this.hp = Math.max(0, this.hp - amount);
+
+    // Record damage taken in stats
+    this.stats.addDamageTaken(amount);
 
     // Add damage effects
     const damageEffects = EffectCombinations.createDamageEffects(
@@ -124,8 +120,9 @@ export class Player {
     this.isDead = true;
     this.diedAt = Date.now();
     this.hp = 0;
-    this.deaths++;
-    this.streak = 0; // Reset kill streak on death
+    
+    // Record death in stats
+    this.stats.addDeath();
 
     // Add death effects
     const deathEffects = EffectCombinations.createDeathEffects(this.id, this.pos);
@@ -155,21 +152,44 @@ export class Player {
 
     // Clear all visual effects on respawn
     this.effects.clearAllEffects();
+    
+    // Reset stats for new life (but keep match stats)
+    // Note: We don't call stats.reset() here as that would reset the entire match
   }
 
   /**
    * Add a kill to the player's stats
    */
   addKill(): void {
-    this.kills++;
-    this.streak++;
+    this.stats.addKill();
   }
 
   /**
    * Add an assist to the player's stats
    */
   addAssist(): void {
-    this.assists++;
+    this.stats.addAssist();
+  }
+
+  /**
+   * Record damage dealt by this player
+   */
+  addDamageDealt(amount: number): void {
+    this.stats.addDamageDealt(amount);
+  }
+
+  /**
+   * Record a shot fired by this player
+   */
+  addShotFired(): void {
+    this.stats.addShotFired();
+  }
+
+  /**
+   * Record a shot hit by this player
+   */
+  addShotHit(): void {
+    this.stats.addShotHit();
   }
 
   /**
@@ -389,6 +409,34 @@ export class Player {
   }
 
   /**
+   * Get player statistics summary
+   */
+  getStatsSummary() {
+    return this.stats.getSummary();
+  }
+
+  /**
+   * Get current kill streak
+   */
+  getCurrentStreak(): number {
+    return this.stats.currentStreak;
+  }
+
+  /**
+   * Get streak announcement if player is on a notable streak
+   */
+  getStreakAnnouncement(): string | null {
+    return this.stats.getStreakAnnouncement();
+  }
+
+  /**
+   * Check if player has a notable streak
+   */
+  hasNotableStreak(): boolean {
+    return this.stats.hasNotableStreak();
+  }
+
+  /**
    * Get a simple object representation for serialization
    */
   toJSON(): object {
@@ -408,10 +456,7 @@ export class Player {
       hasteUntil: this.hasteUntil,
       hasteFactor: this.hasteFactor,
       shieldUntil: this.shieldUntil,
-      kills: this.kills,
-      deaths: this.deaths,
-      assists: this.assists,
-      streak: this.streak,
+      stats: this.stats.toJSON(),
       isDead: this.isDead,
       diedAt: this.diedAt
     };

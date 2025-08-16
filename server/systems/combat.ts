@@ -128,13 +128,13 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
         weaponType = e.weapon || 'bullet';
         
         // Track previous streak for event
-        const previousStreak = killer.streak;
+        const previousStreak = killer.getCurrentStreak();
         
         // Use Player class method to add kill (increments kills and streak)
         killer.addKill();
         
         // Emit streak change event
-        eventBus.emit(new StreakChangedEvent(e.source, killer.streak, previousStreak).toEmit());
+        eventBus.emit(new StreakChangedEvent(e.source, killer.getCurrentStreak(), previousStreak).toEmit());
         
         // Find assists (players who damaged victim but didn't get the kill)
         const assistSources = new Set<string>();
@@ -160,17 +160,20 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
         eventBus.emit(new FeedEntryEvent(e.source, e.targetId, weaponType, assistIds.length > 0 ? assistIds : undefined).toEmit());
         
         // Emit score updates for all affected players
-        eventBus.emit(new ScoreUpdateEvent(e.source, killer.kills, killer.deaths, killer.assists).toEmit());
+        const killerStats = killer.stats;
+        eventBus.emit(new ScoreUpdateEvent(e.source, killerStats.kills, killerStats.deaths, killerStats.assists).toEmit());
         for (const assistId of assistIds) {
           const assistPlayer = World.players.get(assistId);
           if (assistPlayer) {
-            eventBus.emit(new ScoreUpdateEvent(assistId, assistPlayer.kills, assistPlayer.deaths, assistPlayer.assists).toEmit());
+            const assistStats = assistPlayer.stats;
+            eventBus.emit(new ScoreUpdateEvent(assistId, assistStats.kills, assistStats.deaths, assistStats.assists).toEmit());
           }
         }
       }
       
       // Emit victim's score update
-      eventBus.emit(new ScoreUpdateEvent(e.targetId, victim.kills, victim.deaths, victim.assists).toEmit());
+      const victimStats = victim.stats;
+      eventBus.emit(new ScoreUpdateEvent(e.targetId, victimStats.kills, victimStats.deaths, victimStats.assists).toEmit());
     }
     
     // Mark player as dead instead of deleting

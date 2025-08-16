@@ -138,10 +138,8 @@ class MatchSystem {
   private resetAllPlayerScores() {
 
     for (const player of World.players.values()) {
-      player.kills = 0;
-      player.deaths = 0;
-      player.assists = 0;
-      player.streak = 0;
+      // Reset player stats using the stats class
+      player.stats.reset();
 
       // Broadcast score reset to all clients
       broadcast({
