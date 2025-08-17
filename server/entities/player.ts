@@ -1,6 +1,7 @@
 import { Vec2 } from "../core/types/vec2.type";
 import { EffectManager, EffectFactory, EffectCombinations, EffectType, DashTrailEffect, IEffect } from "./effects";
 import { PlayerStats } from "./player-stats";
+import { Config } from "../config";
 
 export class Player {
   public readonly id: string;
@@ -44,7 +45,7 @@ export class Player {
     this.vel = { ...initialVel };
     this.face = { ...initialFace };
     this.faceTarget = { ...initialFace };
-    this.hp = 100;
+    this.hp = Config.player.hp;
     this.cd = {};
     this.isDead = false;
 
@@ -139,7 +140,7 @@ export class Player {
     this.vel = { x: 0, y: 0 };
     this.face = { x: 1, y: 0 };
     this.faceTarget = { x: 1, y: 0 };
-    this.hp = 100;
+    this.hp = Config.player.hp;
     this.cd = {};
     this.isDead = false;
     this.diedAt = undefined;

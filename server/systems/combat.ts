@@ -1,6 +1,7 @@
 import { eventBus } from "../core/event-bus";
 import { TDamageAppliedEvent } from "../core/types/events.type";
 import { World } from "../core/world";
+import { Config } from "../config";
 import {
   DamageAppliedEvent,
   ProjectileDespawnedEvent,
@@ -14,13 +15,8 @@ import {
 } from "../events";
 import { eventBus as bus } from "../core/event-bus";
 
-const EXPLOSION_RADIUS = 80;
-const EXPLOSION_DAMAGE = 40;
-const KNOCKBACK_POWER_PER_DAMAGE = 2.0; // tune
-
 // Track recent damage for assist calculation (player -> damages)
-const recentDamage = new Map<string, Array<{ source: string, timestamp: number, amount: number, weapon?: 'bullet' | 'pellet' | 'rocket' | 'explosion' }>>;
-const ASSIST_TIME_WINDOW = 5000; // 5 seconds
+const recentDamage = new Map<string, Array<{ source: string; timestamp: number; amount: number; weapon?: 'bullet' | 'pellet' | 'rocket' | 'explosion' }>>();
 
 eventBus.on('tick:post', () => {
 
@@ -37,18 +33,21 @@ eventBus.on('tick:post', () => {
         if (pr.shouldExplodeOnCollision()) {
           // Explosion AoE
           const pos = { ...pr.pos };
-          eventBus.emit(new ExplosionSpawnedEvent(pos, EXPLOSION_RADIUS, EXPLOSION_DAMAGE).toEmit());
+          const radius = Config.getExplosionRadius();
+          const damage = Config.getExplosionDamage();
+          const knockbackPerDamage = Config.getKnockbackPower();
+          eventBus.emit(new ExplosionSpawnedEvent(pos, radius, damage).toEmit());
           for (const t of World.players.values()) {
             if (t.isDeadPlayer()) continue; // Skip dead players for explosion damage
             const dist = Math.hypot(t.pos.x - pos.x, t.pos.y - pos.y);
-            if (dist <= EXPLOSION_RADIUS) {
-              eventBus.emit(new DamageAppliedEvent(t.id, EXPLOSION_DAMAGE, pr.owner, 'explosion').toEmit())
+            if (dist <= radius) {
+              eventBus.emit(new DamageAppliedEvent(t.id, damage, pr.owner, 'explosion').toEmit())
               // Knockback vector from explosion center
               const nx = dist ? (t.pos.x - pos.x) / dist : 0;
               const ny = dist ? (t.pos.y - pos.y) / dist : 0;
-              const power = EXPLOSION_DAMAGE * KNOCKBACK_POWER_PER_DAMAGE;
+              const power = damage * knockbackPerDamage;
               // Use Player class method for knockback
-              t.applyKnockback(nx * power, ny * power, 150);
+              t.applyKnockback(nx * power, ny * power, Config.combat.knockbackDuration);
               eventBus.emit(new KnockbackAppliedEvent(t.id, { x: nx, y: ny }, power).toEmit());
             }
           }
@@ -90,7 +89,7 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
     damageHistory.push({ source: e.source, timestamp: now, amount: dmg, weapon: e.weapon });
 
     // Clean up old damage entries (keep only recent ones)
-    const validDamage = damageHistory.filter(d => now - d.timestamp <= ASSIST_TIME_WINDOW);
+    const validDamage = damageHistory.filter(d => now - d.timestamp <= Config.combat.assistTimeWindow);
     recentDamage.set(e.targetId, validDamage);
   }
 
@@ -102,8 +101,8 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
       const dy = t.pos.y - s.pos.y;
       const dist = Math.hypot(dx, dy) || 1;
       const nx = dx / dist, ny = dy / dist;
-      const power = e.amount * KNOCKBACK_POWER_PER_DAMAGE;
-      t.kb = { vx: nx * power, vy: ny * power, until: Date.now() + 120 };
+      const power = e.amount * Config.getKnockbackPower();
+      t.kb = { vx: nx * power, vy: ny * power, until: Date.now() + Config.combat.knockbackDuration };
       eventBus.emit(new KnockbackAppliedEvent(t.id, { x: nx, y: ny }, power).toEmit());
     }
   }
@@ -119,7 +118,7 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
       // Get recent damage to calculate assists
       const damageHistory = recentDamage.get(e.targetId) || [];
       const now = Date.now();
-      const validDamage = damageHistory.filter(d => now - d.timestamp <= ASSIST_TIME_WINDOW);
+    const validDamage = damageHistory.filter(d => now - d.timestamp <= Config.combat.assistTimeWindow);
 
       // Find killer and assists
       const assistIds: string[] = [];

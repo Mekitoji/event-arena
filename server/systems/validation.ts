@@ -5,6 +5,7 @@ import { Vec2 } from "../core/types/vec2.type";
 import { World } from "../core/world";
 import { Player } from "../entities/player";
 import { Projectile } from "../entities/projectile";
+import { Config } from "../config";
 import {
   PlayerDiedEvent,
   PlayerJoinedEvent,
@@ -16,7 +17,6 @@ const DEFAULT_POS: Vec2 = { x: 100, y: 100 };
 const DEFAULT_VEL: Vec2 = { x: 0, y: 0 };
 const DEFAULT_FACE: Vec2 = { x: 0, y: 0 };
 // const DEFAULT_HP = 100; // Currently unused but kept for future use
-const DEFAULT_SPEED = 300;
 
 
 eventBus.on('cmd:join', (e: CmdJoin) => {
@@ -44,7 +44,10 @@ eventBus.on('cmd:move', (e: TCmdMoveEvent) => {
 
   const len = Math.hypot(x, y) || 1;
   // update velocity with haste if active
-  const speed = (player.hasteUntil && player.hasteUntil > Date.now() && player.hasteFactor) ? DEFAULT_SPEED * player.hasteFactor : DEFAULT_SPEED;
+  const baseSpeed = Config.player.speed;
+  const speed = (player.hasteUntil && player.hasteUntil > Date.now() && player.hasteFactor)
+    ? baseSpeed * player.hasteFactor
+    : baseSpeed;
   player.vel = { x: (x / len) * speed, y: (y / len) * speed };
 });
 
@@ -57,12 +60,12 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
   const cdKey = `cd:${e.skill}`;
 
   // параметры по умолчанию
-  const baseSpeed = 600;
+  const baseSpeed = Config.projectiles.baseSpeed;
 
   if (e.skill === Skills.SHOOT) {
     // проверка кулдауна
     if ((p.cd[cdKey] ?? 0) > now) return;
-    p.cd[cdKey] = now + 500; // 0,5с кулдаун
+    p.cd[cdKey] = now + Config.cooldowns.shoot;
 
     // расчёт направления выстрела
     const dir = p.face ?? (p.vel.x || p.vel.y ? p.vel : { x: 1, y: 0 });
@@ -89,7 +92,7 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
   if (e.skill === Skills.SHOTGUN) {
     // более длинный кулдаун для дробовика
     if ((p.cd[cdKey] ?? 0) > now) return;
-    p.cd[cdKey] = now + 1000; // 1с кулдаун
+    p.cd[cdKey] = now + Config.cooldowns.shotgun;
 
     // направление взгляда
     const face = p.face ?? { x: 1, y: 0 };
@@ -97,8 +100,8 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
     const fx = face.x / fmag, fy = face.y / fmag;
 
     // база ортогонали для смещения угла
-    const pelletCount = 5;
-    const maxSpread = 0.25; // радиан +- ~14°
+    const pelletCount = Config.projectiles.pellet.count;
+    const maxSpread = Config.projectiles.pellet.spread; // радиан +- ~14°
 
     for (let i = 0; i < pelletCount; i++) {
       // равномерное распределение углов внутри [-maxSpread, +maxSpread]
@@ -130,12 +133,12 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
   if (e.skill === Skills.ROCKET) {
     // Allow casting via enum or raw string if sent
     if ((p.cd[cdKey] ?? 0) > now) return;
-    p.cd[cdKey] = now + 1200; // 1.2s cooldown
+    p.cd[cdKey] = now + Config.cooldowns.rocket;
 
     const face = p.face ?? { x: 1, y: 0 };
     const fmag = Math.hypot(face.x, face.y) || 1;
     const fx = face.x / fmag, fy = face.y / fmag;
-    const speed = 300; // slower rocket
+    const speed = Config.projectiles.rocket.speed; // rocket speed from config
     const vel = { x: fx * speed, y: fy * speed };
 
     const id = crypto.randomUUID();
@@ -146,7 +149,7 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
       pos,
       vel,
       kind: 'rocket',
-      hitRadius: 28
+      hitRadius: Config.projectiles.rocket.hitRadius
     });
     World.projectiles.set(id, projectile);
     eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'rocket').toEmit());
@@ -160,7 +163,7 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
     // Dash: short i-frames and speed boost
     if ((p.cd[cdKey] ?? 0) > now) return;
     const duration = 220; // ms
-    p.cd[cdKey] = now + 800; // dash cooldown
+    p.cd[cdKey] = now + Config.cooldowns.dash; // dash cooldown
     p.iframeUntil = now + duration;
     p.dashUntil = now + duration;
     p.dashFactor = 2.5; // 2.5x speed while active

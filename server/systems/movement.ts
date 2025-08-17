@@ -10,15 +10,16 @@ import {
   PlayerMovedEvent,
   PlayerAimedEvent
 } from "../events";
+import { Config } from "../config";
 
-const EPS = 0.5; // минимальный порог движения для рассылки
+const EPS = Config.combat.movementThreshold; // минимальный порог движения для рассылки
 const lastBroadcastPos = new Map<string, { x: number; y: number }>();
 const lastFace = new Map<string, { x: number; y: number }>();
-const MAX_TURN_SPEED = Math.PI * 4; // rad/s (720°/s) tweak as needed
+const MAX_TURN_SPEED = Config.player.turnSpeed; // rad/s (from config)
 const dashing = new Set<string>();
 
 // Heartbeat (anti-stall): periodically rebroadcast positions to mitigate packet loss
-const HB_INTERVAL_MS = 280; // ~250–300 ms
+const HB_INTERVAL_MS = Config.combat.heartbeatInterval; // ~250–300 ms
 let hbAccumMs = 0;
 const lastHBPos = new Map<string, { x: number; y: number }>();
 
@@ -117,7 +118,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
 
     // интеграция + коллизии с препятствиями (радиус игрока ~16)
     // Use substeps to avoid tunneling at higher speeds (e.g., with haste/dash)
-    const rr = 16; // player radius in world units
+    const rr = Config.player.radius; // player radius in world units
     const moveDist = Math.hypot(vx, vy) * dt;
     const MAX_STEP = 6; // world units per substep
     const steps = Math.max(1, Math.ceil(moveDist / MAX_STEP));
@@ -197,7 +198,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
         // rocket handled in combat loop when colliding with players; for walls, explode here
         // emulate tick:post logic: remove projectile and emit explosion (reuse damage system by emitting event)
         projectilesToRemove.push(pr.id);
-        eventBus.emit(new ExplosionSpawnedEvent({ ...pr.pos }, 80, 40).toEmit());
+        eventBus.emit(new ExplosionSpawnedEvent({ ...pr.pos }, Config.getExplosionRadius(), Config.getExplosionDamage()).toEmit());
         continue;
       } else {
         // Try to bounce using class method
