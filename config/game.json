@@ -1,0 +1,78 @@
+{
+  "world": {
+    "width": 2000,
+    "height": 1200
+  },
+  "player": {
+    "hp": 100,
+    "speed": 300,
+    "radius": 16,
+    "turnSpeed": 12.566370614359172
+  },
+  "projectiles": {
+    "hitRadius": 20,
+    "baseSpeed": 600,
+    "bullet": {
+      "damage": 30,
+      "lifetime": 3000,
+      "maxBounces": 3,
+      "damageDropoff": 0.8,
+      "velocityRetention": 0.9
+    },
+    "pellet": {
+      "damage": 17,
+      "lifetime": 2000,
+      "maxBounces": 2,
+      "damageDropoff": 0.7,
+      "velocityRetention": 0.85,
+      "count": 5,
+      "spread": 0.25
+    },
+    "rocket": {
+      "damage": 45,
+      "speed": 300,
+      "lifetime": 4000,
+      "hitRadius": 28
+    }
+  },
+  "explosions": {
+    "radius": 85,
+    "damage": 40,
+    "knockbackPower": 2.2
+  },
+  "cooldowns": {
+    "shoot": 450,
+    "shotgun": 1000,
+    "rocket": 1100,
+    "dash": 800
+  },
+  "buffs": {
+    "hasteMultiplier": 1.6,
+    "shieldReduction": 0.5,
+    "hasteDefaultDuration": 5000,
+    "shieldDefaultDuration": 8000
+  },
+  "combat": {
+    "knockbackDuration": 120,
+    "assistTimeWindow": 4500,
+    "heartbeatInterval": 280,
+    "movementThreshold": 0.5
+  },
+  "effects": {
+    "damageFlash": {
+      "duration": 180,
+      "alpha": 0.6
+    },
+    "deathRing": {
+      "duration": 450,
+      "maxRadius": 26
+    },
+    "explosion": {
+      "duration": 350
+    },
+    "spark": {
+      "duration": 150,
+      "color": "#ffc864"
+    }
+  }
+}
