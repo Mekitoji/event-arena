@@ -14,16 +14,12 @@ import {
 } from "../events";
 import { eventBus as bus } from "../core/event-bus";
 
-const HIT_RADIUS = 20;
-const DEFAULT_DAMAGE = 25;
-const PELLET_DAMAGE = 17;
-const ROCKET_HIT_RADIUS = 28;
 const EXPLOSION_RADIUS = 80;
 const EXPLOSION_DAMAGE = 40;
 const KNOCKBACK_POWER_PER_DAMAGE = 2.0; // tune
 
 // Track recent damage for assist calculation (player -> damages)
-const recentDamage = new Map<string, Array<{source: string, timestamp: number, amount: number, weapon?: 'bullet' | 'pellet' | 'rocket' | 'explosion'}>>;
+const recentDamage = new Map<string, Array<{ source: string, timestamp: number, amount: number, weapon?: 'bullet' | 'pellet' | 'rocket' | 'explosion' }>>;
 const ASSIST_TIME_WINDOW = 5000; // 5 seconds
 
 eventBus.on('tick:post', () => {
@@ -31,14 +27,14 @@ eventBus.on('tick:post', () => {
   for (const pr of [...World.projectiles.values()]) {
     for (const p of World.players.values()) {
       if (p.id === pr.owner || p.isDeadPlayer()) continue; // Skip dead players
-      const hitR = pr.kind === 'rocket' ? (pr.hitRadius ?? ROCKET_HIT_RADIUS) : HIT_RADIUS;
-      const d = Math.hypot(p.pos.x - pr.pos.x, p.pos.y - pr.pos.y);
-      if (d <= hitR) {
+
+      // Use projectile's built-in hit detection
+      if (pr.isWithinHitRadius(p.pos)) {
         // Remove projectile
         World.projectiles.delete(pr.id);
         eventBus.emit(new ProjectileDespawnedEvent(pr.id).toEmit())
 
-        if (pr.kind === 'rocket') {
+        if (pr.shouldExplodeOnCollision()) {
           // Explosion AoE
           const pos = { ...pr.pos };
           eventBus.emit(new ExplosionSpawnedEvent(pos, EXPLOSION_RADIUS, EXPLOSION_DAMAGE).toEmit());
@@ -57,10 +53,16 @@ eventBus.on('tick:post', () => {
             }
           }
         } else {
-          // bullet/pellet damage to the hit player
-          const dmg = pr.kind === 'pellet' ? PELLET_DAMAGE : DEFAULT_DAMAGE;
+          // bullet/pellet damage to the hit player using projectile's current damage
+          const dmg = pr.getCurrentDamage(); // This accounts for damage reduction from bounces
           const weaponType = pr.kind === 'pellet' ? 'pellet' : 'bullet';
           eventBus.emit(new DamageAppliedEvent(p.id, dmg, pr.owner, weaponType).toEmit())
+
+          // Record shot hit for accuracy tracking
+          const shooter = World.players.get(pr.owner);
+          if (shooter) {
+            shooter.addShotHit();
+          }
         }
       }
     }
@@ -71,14 +73,14 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
   const t = World.players.get(e.targetId); if (!t) return;
   // ignore damage if target is dead or has i-frames
   if (t.isDeadPlayer() || t.hasIframes()) return;
-  
+
   // Calculate damage with shield protection
   const dmg = t.hasShield() ? Math.ceil(e.amount * 0.5) : e.amount;
-  
+
   // Apply damage using Player class method
   t.takeDamage(dmg);
   const now = Date.now();
-  
+
   // Track damage for assist calculation
   if (e.source && e.source !== e.targetId) {
     if (!recentDamage.has(e.targetId)) {
@@ -86,7 +88,7 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
     }
     const damageHistory = recentDamage.get(e.targetId)!;
     damageHistory.push({ source: e.source, timestamp: now, amount: dmg, weapon: e.weapon });
-    
+
     // Clean up old damage entries (keep only recent ones)
     const validDamage = damageHistory.filter(d => now - d.timestamp <= ASSIST_TIME_WINDOW);
     recentDamage.set(e.targetId, validDamage);
@@ -110,32 +112,32 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
     // Handle kill/death/assist tracking
     const victim = World.players.get(e.targetId);
     const killer = e.source ? World.players.get(e.source) : null;
-    
+
     if (victim) {
       // Player.die() method already handles deaths and streak reset
-      
+
       // Get recent damage to calculate assists
       const damageHistory = recentDamage.get(e.targetId) || [];
       const now = Date.now();
       const validDamage = damageHistory.filter(d => now - d.timestamp <= ASSIST_TIME_WINDOW);
-      
+
       // Find killer and assists
       const assistIds: string[] = [];
       let weaponType: 'bullet' | 'pellet' | 'rocket' | 'explosion' = 'bullet'; // Default
-      
+
       if (killer && e.source) {
         // Determine weapon type from the killing damage event
         weaponType = e.weapon || 'bullet';
-        
+
         // Track previous streak for event
         const previousStreak = killer.getCurrentStreak();
-        
+
         // Use Player class method to add kill (increments kills and streak)
         killer.addKill();
-        
+
         // Emit streak change event
         eventBus.emit(new StreakChangedEvent(e.source, killer.getCurrentStreak(), previousStreak).toEmit());
-        
+
         // Find assists (players who damaged victim but didn't get the kill)
         const assistSources = new Set<string>();
         for (const damage of validDamage) {
@@ -143,7 +145,7 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
             assistSources.add(damage.source);
           }
         }
-        
+
         // Increment assists for assist players using Player class method
         for (const assistId of assistSources) {
           const assistPlayer = World.players.get(assistId);
@@ -152,13 +154,13 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
             assistIds.push(assistId);
           }
         }
-        
+
         // Emit kill event
         eventBus.emit(new PlayerKillEvent(e.source, e.targetId, assistIds.length > 0 ? assistIds : undefined).toEmit());
-        
+
         // Emit kill feed event
         eventBus.emit(new FeedEntryEvent(e.source, e.targetId, weaponType, assistIds.length > 0 ? assistIds : undefined).toEmit());
-        
+
         // Emit score updates for all affected players
         const killerStats = killer.stats;
         eventBus.emit(new ScoreUpdateEvent(e.source, killerStats.kills, killerStats.deaths, killerStats.assists).toEmit());
@@ -170,20 +172,20 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
           }
         }
       }
-      
+
       // Emit victim's score update
       const victimStats = victim.stats;
       eventBus.emit(new ScoreUpdateEvent(e.targetId, victimStats.kills, victimStats.deaths, victimStats.assists).toEmit());
     }
-    
+
     // Mark player as dead instead of deleting
     t.isDead = true;
     t.diedAt = Date.now();
     t.hp = 0; // Ensure HP is 0
-    
+
     // Clean up damage history for dead player
     recentDamage.delete(e.targetId);
-    
+
     bus.emit(new PlayerDiedEvent(t.id).toEmit());
   }
 });

@@ -1,16 +1,8 @@
 import { Vec2 } from "./types/vec2.type";
 import { Player } from "../entities/player";
+import { Projectile } from "../entities/projectile";
 
 export type EntityId = string;
-
-type Projectile = {
-  id: string;
-  pos: Vec2,
-  vel: Vec2,
-  owner: string;
-  kind?: 'bullet' | 'pellet' | 'rocket';
-  hitRadius?: number;
-}
 
 type Pickup = { id: string, pos: Vec2, kind: 'heal' | 'haste' | 'shield' };
 

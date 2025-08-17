@@ -4,6 +4,7 @@ import { TCmdMoveEvent, TCmdCastEvent, TCmdLeaveEvent } from "../core/types/even
 import { Vec2 } from "../core/types/vec2.type";
 import { World } from "../core/world";
 import { Player } from "../entities/player";
+import { Projectile } from "../entities/projectile";
 import {
   PlayerDiedEvent,
   PlayerJoinedEvent,
@@ -70,8 +71,18 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
 
     const id = crypto.randomUUID();
     const pos = { ...p.pos };
-World.projectiles.set(id, { id, pos, vel, owner: p.id, kind: 'bullet' });
+    const projectile = new Projectile({
+      id,
+      owner: p.id,
+      pos,
+      vel,
+      kind: 'bullet'
+    });
+    World.projectiles.set(id, projectile);
     eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'bullet').toEmit());
+    
+    // Track shot fired for accuracy
+    p.addShotFired();
     return;
   }
 
@@ -100,8 +111,18 @@ World.projectiles.set(id, { id, pos, vel, owner: p.id, kind: 'bullet' });
       const vel = { x: dx * baseSpeed, y: dy * baseSpeed };
       const id = crypto.randomUUID();
       const pos = { ...p.pos };
-World.projectiles.set(id, { id, pos, vel, owner: p.id, kind: 'pellet' });
+      const projectile = new Projectile({
+        id,
+        owner: p.id,
+        pos,
+        vel,
+        kind: 'pellet'
+      });
+      World.projectiles.set(id, projectile);
       eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'pellet').toEmit());
+      
+      // Each pellet counts as a shot fired for accuracy
+      p.addShotFired();
     }
     return;
   }
@@ -119,8 +140,19 @@ World.projectiles.set(id, { id, pos, vel, owner: p.id, kind: 'pellet' });
 
     const id = crypto.randomUUID();
     const pos = { ...p.pos };
-World.projectiles.set(id, { id, pos, vel, owner: p.id, kind: 'rocket', hitRadius: 28 });
+    const projectile = new Projectile({
+      id,
+      owner: p.id,
+      pos,
+      vel,
+      kind: 'rocket',
+      hitRadius: 28
+    });
+    World.projectiles.set(id, projectile);
     eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'rocket').toEmit());
+    
+    // Track rocket shot for accuracy
+    p.addShotFired();
     return;
   }
 

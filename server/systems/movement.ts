@@ -178,44 +178,55 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
   }
 
   // снаряды как раньше
+  const projectilesToRemove: string[] = [];
+  
   for (const pr of World.projectiles.values()) {
-    pr.pos.x += pr.vel.x * dt;
-    pr.pos.y += pr.vel.y * dt;
+    // Update projectile position using class method
+    pr.update(dt);
+
+    // Check for expiration due to lifetime
+    if (pr.isExpired()) {
+      projectilesToRemove.push(pr.id);
+      continue;
+    }
 
     // столкновение с препятствиями
     const col = collideProjectile(pr);
     if (col.hit) {
-      if (pr.kind === 'rocket') {
+      if (pr.shouldExplodeOnCollision()) {
         // rocket handled in combat loop when colliding with players; for walls, explode here
         // emulate tick:post logic: remove projectile and emit explosion (reuse damage system by emitting event)
-        World.projectiles.delete(pr.id);
-        eventBus.emit(new ProjectileDespawnedEvent(pr.id).toEmit());
+        projectilesToRemove.push(pr.id);
         eventBus.emit(new ExplosionSpawnedEvent({ ...pr.pos }, 80, 40).toEmit());
         continue;
       } else {
-        // bounce: reflect velocity across normal
+        // Try to bounce using class method
         const n = col.normal!;
-        const dot = pr.vel.x * n.x + pr.vel.y * n.y;
-        pr.vel.x = pr.vel.x - 2 * dot * n.x;
-        pr.vel.y = pr.vel.y - 2 * dot * n.y;
-        // dampen a bit
-        pr.vel.x *= 0.9; pr.vel.y *= 0.9;
-        eventBus.emit(new ProjectileBouncedEvent(pr.id, n).toEmit());
+        const bounced = pr.bounce(n);
+        if (bounced) {
+          eventBus.emit(new ProjectileBouncedEvent(pr.id, n).toEmit());
+        } else {
+          // Can't bounce anymore, remove projectile
+          projectilesToRemove.push(pr.id);
+          continue;
+        }
       }
     }
 
     // если вылетел за пределы — удаляем и уведомляем
-    if (
-      pr.pos.x < 0 || pr.pos.x > World.bounds.w ||
-      pr.pos.y < 0 || pr.pos.y > World.bounds.h
-    ) {
-      World.projectiles.delete(pr.id);
-      eventBus.emit(new ProjectileDespawnedEvent(pr.id).toEmit());
+    if (pr.isOutOfBounds(World.bounds.w, World.bounds.h)) {
+      projectilesToRemove.push(pr.id);
     } else {
       // иначе отправляем новое положение
       eventBus.emit(new ProjectileMovedEvent(pr.pos, pr.id).toEmit());
     }
-  };
+  }
+  
+  // Remove expired/out-of-bounds projectiles
+  for (const id of projectilesToRemove) {
+    World.projectiles.delete(id);
+    eventBus.emit(new ProjectileDespawnedEvent(id).toEmit());
+  }
 
   eventBus.on('player:join', (e: TPlayerJoinEvent) => {
     lastBroadcastPos.delete(e.playerId);
