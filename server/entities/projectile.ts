@@ -47,21 +47,21 @@ export class Projectile {
       case 'bullet':
         this.hitRadius = config.hitRadius || 20;
         this.damage = config.damage || 25;
-        this.lifetime = config.lifetime || 3000; // 3 seconds
+        this.lifetime = config.lifetime || 4000; // 4 seconds
         this.maxBounces = 3;
         this.damageDropoff = 0.8; // 20% damage loss per bounce
         this.velocityRetention = 0.9; // 10% velocity loss per bounce
         break;
-      
+
       case 'pellet':
         this.hitRadius = config.hitRadius || 20;
         this.damage = config.damage || 17;
-        this.lifetime = config.lifetime || 2000; // 2 seconds
+        this.lifetime = config.lifetime || 3000; // 3 seconds
         this.maxBounces = 2;
         this.damageDropoff = 0.7; // 30% damage loss per bounce
         this.velocityRetention = 0.85; // 15% velocity loss per bounce
         break;
-      
+
       case 'rocket':
         this.hitRadius = config.hitRadius || 28;
         this.damage = config.damage || 40;
@@ -70,7 +70,7 @@ export class Projectile {
         this.damageDropoff = 1.0; // No damage dropoff for rockets
         this.velocityRetention = 1.0; // No velocity change for rockets
         break;
-      
+
       default:
         throw new Error(`Unknown projectile kind: ${config.kind}`);
     }
@@ -251,10 +251,10 @@ export class Projectile {
       hitRadius: data.hitRadius,
       damage: data.damage
     });
-    
+
     projectile.bounceCount = data.bounceCount;
     projectile.spawnTime = data.spawnTime;
-    
+
     return projectile;
   }
 }

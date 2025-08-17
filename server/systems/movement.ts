@@ -187,6 +187,10 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
 
     // Check for expiration due to lifetime
     if (pr.isExpired()) {
+      // If a rocket expires (i.e., reached its max lifetime without hitting), explode at its current position
+      if (pr.kind === 'rocket') {
+        eventBus.emit(new ExplosionSpawnedEvent({ ...pr.pos }, Config.getExplosionRadius(), Config.getExplosionDamage()).toEmit());
+      }
       projectilesToRemove.push(pr.id);
       continue;
     }
