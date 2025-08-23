@@ -1,0 +1,151 @@
+{
+  "annotations": [],
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": null,
+  "iteration": 1710700000000,
+  "links": [],
+  "panels": [
+    {
+      "type": "row",
+      "title": "Overview",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "type": "stat",
+      "title": "WS Connections",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 1 },
+      "targets": [
+        { "expr": "ws_connections", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "WS Msg Rate (in)",
+      "gridPos": { "h": 8, "w": 9, "x": 6, "y": 1 },
+      "targets": [
+        { "expr": "sum by(type) (rate(ws_messages_total{direction=\"in\"}[1m]))", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "WS Msg Rate (out)",
+      "gridPos": { "h": 8, "w": 9, "x": 15, "y": 1 },
+      "targets": [
+        { "expr": "sum by(type) (rate(ws_messages_total{direction=\"out\"}[1m]))", "refId": "A" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Tick",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 9 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Tick Duration (p50/p90/p99)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 10 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(tick_duration_seconds_bucket[5m])) by (le))", "refId": "A" },
+        { "expr": "histogram_quantile(0.9, sum(rate(tick_duration_seconds_bucket[5m])) by (le))", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(tick_duration_seconds_bucket[5m])) by (le))", "refId": "C" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Tick dt (game logic)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 10 },
+      "targets": [
+        { "expr": "tick_last_dt_seconds", "refId": "A" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "WS Handler Latency",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 18 }
+    },
+    {
+      "type": "timeseries",
+      "title": "WS Handler p90 by type",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 19 },
+      "targets": [
+        { "expr": "histogram_quantile(0.9, sum by (le,type) (rate(ws_message_duration_seconds_bucket[5m])))", "refId": "A" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "WS Handler rate (calls/s) by type",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 19 },
+      "targets": [
+        { "expr": "sum by (type) (rate(ws_message_duration_seconds_count[5m]))", "refId": "A" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Event Loop",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 27 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Event Loop Lag (p50/p90/p99)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+      "targets": [
+        { "expr": "histogram_quantile(0.5, sum(rate(event_loop_lag_seconds_bucket[5m])) by (le))", "refId": "A" },
+        { "expr": "histogram_quantile(0.9, sum(rate(event_loop_lag_seconds_bucket[5m])) by (le))", "refId": "B" },
+        { "expr": "histogram_quantile(0.99, sum(rate(event_loop_lag_seconds_bucket[5m])) by (le))", "refId": "C" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "WS Send Buffer (bytes)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+      "targets": [
+        { "expr": "ws_send_buffer_bytes", "refId": "A" }
+      ]
+    },
+    {
+      "type": "row",
+      "title": "Game State",
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 36 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Players / Projectiles",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 37 },
+      "targets": [
+        { "expr": "players_active", "refId": "A" },
+        { "expr": "projectiles_active", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Node process CPU and RSS",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 37 },
+      "targets": [
+        { "expr": "rate(process_cpu_user_seconds_total[1m]) + rate(process_cpu_system_seconds_total[1m])", "refId": "A" },
+        { "expr": "process_resident_memory_bytes", "refId": "B" }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Node Heap (used/total/external/arrayBuffers)",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 45 },
+      "targets": [
+        { "expr": "node_heap_used_bytes", "refId": "A" },
+        { "expr": "node_heap_total_bytes", "refId": "B" },
+        { "expr": "node_external_bytes", "refId": "C" },
+        { "expr": "node_array_buffers_bytes", "refId": "D" }
+      ]
+    }
+  ],
+  "schemaVersion": 38,
+  "style": "dark",
+  "tags": ["event-arena", "metrics"],
+  "templating": { "list": [] },
+  "time": { "from": "now-6h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Event Arena Metrics",
+  "version": 1
+}
+

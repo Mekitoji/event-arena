@@ -2,6 +2,7 @@ import { WebSocketServer } from "ws";
 import { SourceEventType } from "../core/types/events.type";
 import { eventBus } from "../core/event-bus";
 import { TEvent } from "../core/types";
+import { incWsOutgoing } from "../metrics/metrics";
 
 const SOURCE_EVENT_TYPES = [
   "player:join",
@@ -38,6 +39,7 @@ export function attachBroadcaster(wss: WebSocketServer) {
   for (const t of broadcastTypes) {
     eventBus.on(t, (e: TEvent) => {
       const payload = JSON.stringify(e);
+      try { if (typeof (e as any).type === 'string') incWsOutgoing((e as any).type); } catch {}
       for (const client of wss.clients) {
         // 1 === Open connection
         if (client.readyState !== 1) continue;
@@ -46,6 +48,13 @@ export function attachBroadcaster(wss: WebSocketServer) {
 
         client.send(payload);
       }
+      try {
+        let sum = 0;
+        for (const c of wss.clients) sum += c.bufferedAmount;
+        // Lazy import to avoid cycle on module init
+        const { setWsBufferedBytes } = require('../metrics/metrics');
+        setWsBufferedBytes(sum);
+      } catch {}
     })
   }
 }

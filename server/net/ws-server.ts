@@ -15,6 +15,7 @@ import {
 } from "../events";
 import { matchSystem } from "../systems/match.js";
 import WebSocket, { WebSocketServer } from "ws";
+import { incWsIncoming, setWsConnections, wsMessageDurationSeconds, setWsBufferedBytes } from "../metrics/metrics";
 
 const DEFAULT_WS_PORT = 8081;
 
@@ -40,15 +41,15 @@ const playerSpawnManager = new SpawnManager({
 // Adjust original spawn points to respect margins and use as fallbacks
 const SAFE_SPAWN_POINTS = playerSpawnManager.adjustSpawnPointsToMargins(ORIGINAL_SPAWN_POINTS);
 
-function randomSpawn(): Vec2 { 
+function randomSpawn(): Vec2 {
   // Try to find a safe position first
   const safePos = playerSpawnManager.findSafeSpawnPosition();
-  
+
   // If safe position found, use it, otherwise fallback to adjusted spawn points
   if (playerSpawnManager.isWithinSpawnBounds(safePos) && !playerSpawnManager.isPositionBlocked(safePos)) {
     return safePos;
   }
-  
+
   // Fallback to one of the safe spawn points
   return { ...SAFE_SPAWN_POINTS[Math.floor(Math.random() * SAFE_SPAWN_POINTS.length)] };
 }
@@ -74,109 +75,129 @@ export function createWsServer(port = DEFAULT_WS_PORT) {
   });
 
   wss.on('connection', (ws) => {
+    // Update connection gauge
+    try { setWsConnections(wss.clients.size); } catch { }
+    try {
+      let sum = 0;
+      for (const c of wss.clients) sum += c.bufferedAmount;
+      setWsBufferedBytes(sum);
+    } catch { }
+
     ws.on('message', (raw) => {
       let msg: { type: CmdType };
       try { msg = JSON.parse(String(raw)); } catch { return; }
 
-      // if (msg?.type?.startsWith('cmd:')) eventBus.emit({ ...msg, _ws: ws });
-      if (msg.type === 'cmd:join') {
-        const cmd = msg as CmdJoin;
-        const id = crypto.randomUUID();
-        const name = cmd.name || 'Anon';
+      // Count inbound messages by type (bounded set of cmd:*)
+      try { if (typeof msg?.type === 'string') incWsIncoming(msg.type); } catch { }
 
-        const spawn = randomSpawn();
-        const player = new Player(id, name, spawn, START_VEL);
-        World.players.set(id, player);
+      const endTimer = (() => {
+        try { return wsMessageDurationSeconds.startTimer({ type: String((msg as any)?.type || 'unknown') }); } catch { return () => { }; }
+      })();
 
-        connToPlayer.set(ws, id);
-        playerToConn.set(id, ws);
-        playerNames.set(id, name);
-        deadUntil.delete(id);
-        const playersInfo: { id: string; name: string; pos: Vec2 }[] = [];
+      try {
+        // if (msg?.type?.startsWith('cmd:')) eventBus.emit({ ...msg, _ws: ws });
+        if (msg.type === 'cmd:join') {
+          const cmd = msg as CmdJoin;
+          const id = crypto.randomUUID();
+          const name = cmd.name || 'Anon';
 
-        // отправить информацию о других игроках только этому клиенту
+          const spawn = randomSpawn();
+          const player = new Player(id, name, spawn, START_VEL);
+          World.players.set(id, player);
 
-        for (const [pid, player] of World.players.entries()) {
-          if (pid === id) continue;
-          ws.send(new PlayerJoinedEvent(pid, player.name).toString());
-          if (pid !== id) {
-            playersInfo.push({ id: pid, name: player.name, pos: { ...player.pos } });
+          connToPlayer.set(ws, id);
+          playerToConn.set(id, ws);
+          playerNames.set(id, name);
+          deadUntil.delete(id);
+          const playersInfo: { id: string; name: string; pos: Vec2 }[] = [];
+
+          // отправить информацию о других игроках только этому клиенту
+
+          for (const [pid, player] of World.players.entries()) {
+            if (pid === id) continue;
+            ws.send(new PlayerJoinedEvent(pid, player.name).toString());
+            if (pid !== id) {
+              playersInfo.push({ id: pid, name: player.name, pos: { ...player.pos } });
+            }
           }
+
+          // Get current match info for the session
+          const currentMatch = matchSystem.getCurrentMatch();
+          const matchInfo = currentMatch ? {
+            id: currentMatch.id,
+            mode: currentMatch.mode,
+            phase: currentMatch.phase,
+            startsAt: currentMatch.startsAt,
+            endsAt: currentMatch.endsAt,
+          } : undefined;
+
+          // Always send session:started to the joining client (players list may be empty)
+          ws.send(new SessionStartedEvent(name, id, playersInfo, matchInfo).toString());
+
+          eventBus.emit(new PlayerJoinedEvent(id, name).toEmit());
+          return;
         }
 
-        // Get current match info for the session
-        const currentMatch = matchSystem.getCurrentMatch();
-        const matchInfo = currentMatch ? {
-          id: currentMatch.id,
-          mode: currentMatch.mode,
-          phase: currentMatch.phase,
-          startsAt: currentMatch.startsAt,
-          endsAt: currentMatch.endsAt,
-        } : undefined;
+        const id = connToPlayer.get(ws);
+        if (!id) return;
 
-        // Always send session:started to the joining client (players list may be empty)
-        ws.send(new SessionStartedEvent(name, id, playersInfo, matchInfo).toString());
-
-        eventBus.emit(new PlayerJoinedEvent(id, name).toEmit());
-        return;
-      }
-
-      const id = connToPlayer.get(ws);
-      if (!id) return;
-
-      if (msg.type === 'cmd:move') {
-        const cmd = msg as CmdMove;
-        eventBus.emit(new PlayerMoveCmdEvent(id, cmd.dir).toEmit());
-        return
-      }
-
-      if (msg.type === 'cmd:cast') {
-        const cmd = msg as CmdCast;
-        eventBus.emit(new PlayerCastCmdEvent(id, cmd.skill).toEmit());
-        return
-      }
-
-      if (msg.type === 'cmd:respawn') {
-        // First emit the respawn command event
-        eventBus.emit(new PlayerRespawnCmdEvent(id).toEmit());
-        
-        const now = Date.now();
-        const until = deadUntil.get(id) ?? 0;
-        const existingPlayer = World.players.get(id);
-        if (existingPlayer && !existingPlayer.isDead) return; // already alive
-        if (now < until) return; // cooldown not finished
-        const name = playerNames.get(id) || 'Anon';
-        const spawn = randomSpawn();
-        
-        if (existingPlayer) {
-          // Use the Player class respawn method (preserves scores automatically)
-          existingPlayer.respawn(spawn);
-        } else {
-          // Create new player (shouldn't happen but failsafe)
-          const newPlayer = new Player(id, name, spawn, START_VEL);
-          World.players.set(id, newPlayer);
+        if (msg.type === 'cmd:move') {
+          const cmd = msg as CmdMove;
+          eventBus.emit(new PlayerMoveCmdEvent(id, cmd.dir).toEmit());
+          return
         }
-        
-        deadUntil.delete(id);
-        // Broadcast as a normal join so all clients (including self) re-add the player
-        eventBus.emit(new PlayerJoinedEvent(id, name).toEmit());
-        return;
-      }
 
-      if (msg.type === 'cmd:aim') {
-        const data = msg as { type: 'cmd:aim'; dir: Vec2 };
-        const p = World.players.get(id);
-        if (!p) return;
-        
-        // Use Player class method to set face direction
-        p.setFaceDirection(data.dir);
-        
-        // Emit the aim command event
-        eventBus.emit(new PlayerAimCmdEvent(id, p.faceTarget!).toEmit());
-        return;
-      }
+        if (msg.type === 'cmd:cast') {
+          const cmd = msg as CmdCast;
+          eventBus.emit(new PlayerCastCmdEvent(id, cmd.skill).toEmit());
+          return
+        }
 
-      if (msg.type?.startsWith('cmd:')) console.log(`Unhandled command ${msg.type}: ${msg}`); // TODO What to do here
+        if (msg.type === 'cmd:respawn') {
+          // First emit the respawn command event
+          eventBus.emit(new PlayerRespawnCmdEvent(id).toEmit());
+
+          const now = Date.now();
+          const until = deadUntil.get(id) ?? 0;
+          const existingPlayer = World.players.get(id);
+          if (existingPlayer && !existingPlayer.isDead) return; // already alive
+          if (now < until) return; // cooldown not finished
+          const name = playerNames.get(id) || 'Anon';
+          const spawn = randomSpawn();
+
+          if (existingPlayer) {
+            // Use the Player class respawn method (preserves scores automatically)
+            existingPlayer.respawn(spawn);
+          } else {
+            // Create new player (shouldn't happen but failsafe)
+            const newPlayer = new Player(id, name, spawn, START_VEL);
+            World.players.set(id, newPlayer);
+          }
+
+          deadUntil.delete(id);
+          // Broadcast as a normal join so all clients (including self) re-add the player
+          eventBus.emit(new PlayerJoinedEvent(id, name).toEmit());
+          return;
+        }
+
+        if (msg.type === 'cmd:aim') {
+          const data = msg as { type: 'cmd:aim'; dir: Vec2 };
+          const p = World.players.get(id);
+          if (!p) return;
+
+          // Use Player class method to set face direction
+          p.setFaceDirection(data.dir);
+
+          // Emit the aim command event
+          eventBus.emit(new PlayerAimCmdEvent(id, p.faceTarget!).toEmit());
+          return;
+        }
+
+        if (msg.type?.startsWith('cmd:')) console.log(`Unhandled command ${msg.type}: ${msg}`); // TODO What to do here
+
+      } finally {
+        try { endTimer(); } catch { }
+      }
 
     });
 
@@ -189,6 +210,13 @@ export function createWsServer(port = DEFAULT_WS_PORT) {
         deadUntil.delete(id);
         eventBus.emit(new PlayerLeaveCmdEvent(id).toEmit());
       }
+      // Update connection gauge after close
+      try { setWsConnections(wss.clients.size); } catch { }
+      try {
+        let sum = 0;
+        for (const c of wss.clients) sum += c.bufferedAmount;
+        setWsBufferedBytes(sum);
+      } catch { }
     });
 
     ws.send(JSON.stringify({ type: 'connected', ts: Date.now() }));
