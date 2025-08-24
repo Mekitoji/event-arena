@@ -27,6 +27,8 @@ const SOURCE_EVENT_TYPES = [
   "match:started",
   "match:ended",
   "score:update",
+  "feed:entry",
+  "streak:changed",
 ] as const satisfies readonly SourceEventType[];
 
 const broadcastTypes = new Set(...[SOURCE_EVENT_TYPES]);
