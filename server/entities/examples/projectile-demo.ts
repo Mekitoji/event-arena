@@ -1,4 +1,4 @@
-import { Projectile, ProjectileKind } from '../projectile';
+import { Projectile } from '../projectile';
 import { Vec2 } from '../../core/types/vec2.type';
 
 /**

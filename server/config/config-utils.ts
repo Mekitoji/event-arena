@@ -7,7 +7,10 @@ import {
   DifficultyMultipliers,
   ProjectileType,
   WeaponType,
-  DeepPartial
+  DeepPartial,
+  BulletConfig,
+  PelletConfig,
+  RocketConfig
 } from './types';
 
 /**
@@ -20,24 +23,32 @@ export class ConfigUtils {
   // OBJECT MANIPULATION UTILITIES
   // ===========================================
 
+  private static isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
   /**
    * Deep merge two configuration objects
    */
   static deepMerge<T>(target: T, source: DeepPartial<T>): T {
-    const result = { ...target } as any;
-    
-    for (const key in source) {
-      const sourceValue = source[key];
-      const targetValue = (target as any)[key];
-      
-      if (sourceValue && typeof sourceValue === 'object' && !Array.isArray(sourceValue)) {
-        result[key] = this.deepMerge(targetValue || {}, sourceValue);
+    const result: Record<string, unknown> = { ...(target as unknown as Record<string, unknown>) };
+
+    for (const key of Object.keys(source as Record<string, unknown>)) {
+      const sourceValue = (source as Record<string, unknown>)[key] as unknown;
+      const targetValue = (target as unknown as Record<string, unknown>)[key] as unknown;
+
+      if (this.isRecord(sourceValue)) {
+        const merged = this.deepMerge(
+          (this.isRecord(targetValue) ? targetValue : {}) as Record<string, unknown>,
+          sourceValue as DeepPartial<Record<string, unknown>>
+        );
+        (result as Record<string, unknown>)[key] = merged;
       } else if (sourceValue !== undefined) {
-        result[key] = sourceValue;
+        (result as Record<string, unknown>)[key] = sourceValue;
       }
     }
-    
-    return result;
+
+    return result as unknown as T;
   }
 
   /**
@@ -50,21 +61,33 @@ export class ConfigUtils {
   /**
    * Get nested property value by path (e.g., "projectiles.bullet.damage")
    */
-  static getNestedValue(obj: any, path: string): any {
-    return path.split('.').reduce((current, key) => current?.[key], obj);
+  static getNestedValue<T>(obj: T, path: string): unknown {
+    let current: unknown = obj;
+    for (const key of path.split('.')) {
+      if (ConfigUtils.isRecord(current) && key in current) {
+        current = current[key as keyof typeof current];
+      } else {
+        return undefined;
+      }
+    }
+    return current;
   }
 
   /**
    * Set nested property value by path
    */
-  static setNestedValue(obj: any, path: string, value: any): void {
+  static setNestedValue<T>(obj: T, path: string, value: unknown): void {
     const keys = path.split('.');
     const lastKey = keys.pop()!;
-    const target = keys.reduce((current, key) => {
-      if (!current[key]) current[key] = {};
-      return current[key];
-    }, obj);
-    target[lastKey] = value;
+    let target: Record<string, unknown> = obj as unknown as Record<string, unknown>;
+    for (const key of keys) {
+      const next = target[key];
+      if (!ConfigUtils.isRecord(next)) {
+        target[key] = {};
+      }
+      target = target[key] as Record<string, unknown>;
+    }
+    target[lastKey] = value as unknown;
   }
 
   // ===========================================
@@ -253,9 +276,9 @@ export class ConfigUtils {
    * Validate individual projectile configuration
    */
   private static validateProjectileConfig(
-    projectile: any, 
-    type: string, 
-    errors: string[], 
+    projectile: BulletConfig | PelletConfig | RocketConfig,
+    type: string,
+    errors: string[],
     warnings: string[]
   ): void {
     if (projectile.damage <= 0) {
@@ -277,8 +300,11 @@ export class ConfigUtils {
       }
     }
     
-    if (type === 'pellet' && projectile.count <= 0) {
-      errors.push('Pellet count must be positive');
+    if (type === 'pellet') {
+      const maybePellet = projectile as PelletConfig;
+      if (maybePellet.count <= 0) {
+        errors.push('Pellet count must be positive');
+      }
     }
     
     if (projectile.damage > 100) {
@@ -413,29 +439,30 @@ export class ConfigUtils {
    * Compare two configurations and return differences
    */
   static compareConfigs(
-    config1: GameConfigSchema, 
+    config1: GameConfigSchema,
     config2: GameConfigSchema
-  ): Record<string, { old: any; new: any }> {
-    const differences: Record<string, { old: any; new: any }> = {};
-    
+  ): Record<string, { old: unknown; new: unknown }> {
+    const differences: Record<string, { old: unknown; new: unknown }> = {};
+
     this.compareObjects(config1, config2, '', differences);
-    
+
     return differences;
   }
 
   private static compareObjects(
-    obj1: any, 
-    obj2: any, 
-    path: string, 
-    differences: Record<string, { old: any; new: any }>
+    obj1: unknown,
+    obj2: unknown,
+    path: string,
+    differences: Record<string, { old: unknown; new: unknown }>
   ): void {
-    for (const key in obj1) {
+    if (!this.isRecord(obj1) || !this.isRecord(obj2)) return;
+
+    for (const key of Object.keys(obj1)) {
       const fullPath = path ? `${path}.${key}` : key;
       const value1 = obj1[key];
-      const value2 = obj2[key];
-      
-      if (typeof value1 === 'object' && typeof value2 === 'object' && 
-          value1 !== null && value2 !== null) {
+      const value2 = obj2[key as keyof typeof obj2];
+
+      if (this.isRecord(value1) && this.isRecord(value2)) {
         this.compareObjects(value1, value2, fullPath, differences);
       } else if (value1 !== value2) {
         differences[fullPath] = { old: value1, new: value2 };

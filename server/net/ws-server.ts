@@ -15,6 +15,9 @@ import {
 } from "../events";
 import { matchSystem } from "../systems/match.js";
 import WebSocket, { WebSocketServer } from "ws";
+import { hudClear, hudSubscribe, hudUnsubscribe } from "../net/broadcaster";
+import { hudSystem } from "../hud/hud-system";
+import type { WidgetKey } from "../hud/types";
 
 const DEFAULT_WS_PORT = 8081;
 
@@ -73,10 +76,30 @@ export function createWsServer(port = DEFAULT_WS_PORT) {
     }
   });
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws: WebSocket) => {
     ws.on('message', (raw) => {
       let msg: { type: CmdType };
       try { msg = JSON.parse(String(raw)); } catch { return; }
+
+      // HUD subscription commands (connection-scoped)
+      if (msg.type === 'cmd:hud:subscribe') {
+        const maybe = (msg as { widgets?: unknown }).widgets;
+        const widgets = Array.isArray(maybe) && maybe.every((s): s is string => typeof s === 'string') ? maybe : [];
+        const ALLOWED_WIDGET_KEYS = new Set<WidgetKey>(['scoreboard','match','feed','streaks','announcements']);
+        const keys = widgets.filter((w): w is WidgetKey => ALLOWED_WIDGET_KEYS.has(w as WidgetKey));
+        hudSubscribe(ws, keys);
+        // Send immediate snapshots for each requested widget
+        for (const w of keys) hudSystem.pushInitialFor(w, ws);
+        return;
+      }
+      if (msg.type === 'cmd:hud:unsubscribe') {
+        const maybe = (msg as { widgets?: unknown }).widgets;
+        const widgets = Array.isArray(maybe) && maybe.every((s): s is string => typeof s === 'string') ? maybe : [];
+        const ALLOWED_WIDGET_KEYS = new Set<WidgetKey>(['scoreboard','match','feed','streaks','announcements']);
+        const keys = widgets.filter((w): w is WidgetKey => ALLOWED_WIDGET_KEYS.has(w as WidgetKey));
+        hudUnsubscribe(ws, keys);
+        return;
+      }
 
       // if (msg?.type?.startsWith('cmd:')) eventBus.emit({ ...msg, _ws: ws });
       if (msg.type === 'cmd:join') {
@@ -182,6 +205,8 @@ export function createWsServer(port = DEFAULT_WS_PORT) {
 
     ws.on('close', () => {
       const id = connToPlayer.get(ws);
+      // clear HUD subscriptions for this socket
+      hudClear(ws);
       if (id) {
         connToPlayer.delete(ws);
         playerToConn.delete(id);

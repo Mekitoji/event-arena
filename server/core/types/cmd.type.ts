@@ -22,4 +22,7 @@ export type CmdLeave = BaseCmd<'cmd:leave', { playerId: string }>;
 export type CmdRespawn = BaseCmd<'cmd:respawn', { playerId: string }>;
 export type CmdAim = BaseCmd<'cmd:aim', { playerId: string, dir: Vec2 }>;
 
-export type Commands = CmdJoin | CmdMove | CmdCast | CmdLeave | CmdRespawn | CmdAim;
+export type CmdHudSubscribe = BaseCmd<'cmd:hud:subscribe', { widgets: string[] }>;
+export type CmdHudUnsubscribe = BaseCmd<'cmd:hud:unsubscribe', { widgets: string[] }>;
+
+export type Commands = CmdJoin | CmdMove | CmdCast | CmdLeave | CmdRespawn | CmdAim | CmdHudSubscribe | CmdHudUnsubscribe;

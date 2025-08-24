@@ -17,6 +17,7 @@ export const EventSource = {
   SCORE: 'score',
   FEED: 'feed',
   STREAK: 'streak',
+  HUD: 'hud',
   CMD: 'cmd'
 } as const;
 
@@ -77,6 +78,16 @@ export type TMatchEndedEvent = BaseSourceEvent<'match:ended', { id: string, at?:
 // Score events
 export type TScoreUpdateEvent = BaseSourceEvent<'score:update', { playerId: string, kills: number, deaths: number, assists: number }>
 
+// HUD widget-specific updates
+export type THudScoreboardUpdate = BaseSourceEvent<'hud:scoreboard:update', { rows: Array<{ playerId: string, name?: string, kills: number, deaths: number, assists: number, hp?: number, isDead?: boolean }> }>;
+export type THudMatchUpdate = BaseSourceEvent<'hud:match:update', { id?: string | null, mode?: string | null, phase: 'idle' | 'countdown' | 'active' | 'ended', startsAt?: number | null, endsAt?: number | null }>;
+export type THudFeedUpdate = BaseSourceEvent<'hud:feed:update', { items: Array<{ killer: string, victim: string, weapon: 'bullet' | 'pellet' | 'rocket' | 'explosion', assistIds?: string[], timestamp: number }> }>;
+export type THudStreaksUpdate = BaseSourceEvent<'hud:streaks:update', { streaks: Record<string, number> }>;
+export type THudAnnouncementsUpdate = BaseSourceEvent<'hud:announce:update', { items: Array<{ kind: 'streak', playerId: string, name?: string, category: 'double_kill' | 'killing_spree' | 'unstoppable' | 'rampage' | 'legendary', streak: number, message: string, timestamp: number }> }>;
+
+// HUD union type
+export type THudUpdate = THudScoreboardUpdate | THudMatchUpdate | THudFeedUpdate | THudStreaksUpdate | THudAnnouncementsUpdate;
+
 // Kill feed and streak events
 export type TKillFeedEvent = BaseSourceEvent<'feed:entry', { killer: string, victim: string, weapon: 'bullet' | 'pellet' | 'rocket' | 'explosion', assistIds?: string[], timestamp: number }>
 export type TStreakEvent = BaseSourceEvent<'streak:changed', { playerId: string, streak: number, previousStreak: number }>
@@ -93,7 +104,7 @@ export type TTickPreEvent = BaseSourceEvent<'tick:pre', { dt: number }>;
 export type TTickPostEvent = BaseSourceEvent<'tick:post', { dt: number }>;
 
 // All events
-export type SourceEvents = TPlayerJoinEvent | TPlayerMoveEvent | TPlayerAimedEvent | TPlayerDieEvent | TProjectileSpawnedEvent | TProjectileMovedEvent | TProjectileDespawnedEvent | TProjectileBouncedEvent | TPickupSpawnedEvent | TPickupCollectedEvent | TBuffAppliedEvent | TBuffExpiredEvent | TDamageAppliedEvent | TExplosionSpawnedEvent | TKnockbackAppliedEvent | TDashStartedEvent | TDashEndedEvent | TTickPostEvent | TTickPreEvent | TPlayerLeaveEvent | TSessionStartedEvent | TMapLoadedEvent | TMatchCreatedEvent | TMatchStartedEvent | TMatchEndedEvent | TScoreUpdateEvent | TKillEvent | TKillFeedEvent | TStreakEvent | TCmdMoveEvent | TCmdCastEvent | TCmdLeaveEvent | TCmdAimEvent | TCmdRespawnEvent;
+export type SourceEvents = TPlayerJoinEvent | TPlayerMoveEvent | TPlayerAimedEvent | TPlayerDieEvent | TProjectileSpawnedEvent | TProjectileMovedEvent | TProjectileDespawnedEvent | TProjectileBouncedEvent | TPickupSpawnedEvent | TPickupCollectedEvent | TBuffAppliedEvent | TBuffExpiredEvent | TDamageAppliedEvent | TExplosionSpawnedEvent | TKnockbackAppliedEvent | TDashStartedEvent | TDashEndedEvent | TTickPostEvent | TTickPreEvent | TPlayerLeaveEvent | TSessionStartedEvent | TMapLoadedEvent | TMatchCreatedEvent | TMatchStartedEvent | TMatchEndedEvent | TScoreUpdateEvent | THudScoreboardUpdate | THudMatchUpdate | THudFeedUpdate | THudStreaksUpdate | THudAnnouncementsUpdate | TKillEvent | TKillFeedEvent | TStreakEvent | TCmdMoveEvent | TCmdCastEvent | TCmdLeaveEvent | TCmdAimEvent | TCmdRespawnEvent;
 
 // All events types
 export type SourceEventType = SourceEvents['type'];

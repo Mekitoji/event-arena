@@ -1,5 +1,6 @@
 import { WebSocketServer } from "ws";
-import { SourceEventType } from "../core/types/events.type";
+import type WebSocket from "ws";
+import { SourceEventType, THudUpdate } from "../core/types/events.type";
 import { eventBus } from "../core/event-bus";
 import { TEvent } from "../core/types";
 
@@ -35,6 +36,42 @@ const broadcastTypes = new Set(...[SOURCE_EVENT_TYPES]);
 
 let _wss: WebSocketServer | null = null;
 
+// HUD subscription registry: ws -> set of widget keys
+const hudSubs: WeakMap<WebSocket, Set<string>> = new WeakMap();
+
+export function hudSubscribe(ws: WebSocket, widgets: string[]) {
+  const set = hudSubs.get(ws) ?? new Set<string>();
+  widgets.forEach(w => set.add(w));
+  hudSubs.set(ws, set);
+}
+export function hudUnsubscribe(ws: WebSocket, widgets: string[]) {
+  const set = hudSubs.get(ws);
+  if (!set) return;
+  widgets.forEach(w => set.delete(w));
+}
+export function hudClear(ws: WebSocket) { hudSubs.delete(ws); }
+
+export function sendToHudSubscribers(widgetKey: string, message: THudUpdate) {
+  if (!_wss) return;
+  const payload = JSON.stringify(message);
+  for (const client of _wss.clients) {
+    if (client.readyState !== 1 || client.bufferedAmount > 1_000_000) continue;
+    const subs = hudSubs.get(client);
+    if (subs && subs.has(widgetKey)) {
+      try { client.send(payload); } catch {
+        // ignore send errors for individual clients
+      }
+    }
+  }
+}
+
+export function sendToConnection(ws: WebSocket, message: THudUpdate) {
+  if (!ws || ws.readyState !== 1 || ws.bufferedAmount > 1_000_000) return;
+  try { ws.send(JSON.stringify(message)); } catch {
+    // ignore send errors for a single connection
+  }
+}
+
 export function attachBroadcaster(wss: WebSocketServer) {
   _wss = wss;
   for (const t of broadcastTypes) {
@@ -53,7 +90,7 @@ export function attachBroadcaster(wss: WebSocketServer) {
 }
 
 // Direct broadcast function for manual event sending
-export function broadcast(message: object) {
+export function broadcast(message: TEvent) {
   if (!_wss) {
     console.warn('Broadcaster not attached to WebSocket server');
     return;

@@ -1,6 +1,8 @@
 import { eventBus } from "../core/event-bus";
 import { World } from "../core/world";
 import { broadcast } from "../net/broadcaster";
+import type { TMatchCreatedEvent, TMatchStartedEvent, TMatchEndedEvent } from "../core/types/events.type";
+import { ScoreUpdateEvent } from "../events";
 
 interface Match {
   id: string;
@@ -50,7 +52,7 @@ class MatchSystem {
     match.startsAt = Date.now() + countdownMs;
 
     // Broadcast match created with countdown
-    const event = {
+    const event: TMatchCreatedEvent = {
       type: 'match:created',
       id: matchId,
       mode: match.mode,
@@ -78,10 +80,10 @@ class MatchSystem {
     // Reset all player scores at match start
     this.resetAllPlayerScores();
 
-    const event = {
+    const event: TMatchStartedEvent = {
       type: 'match:started',
       id: matchId,
-      ...(durationMs && { durationMs }),
+      ...(durationMs ? { durationMs } : {}),
     };
 
     broadcast(event);
@@ -102,10 +104,10 @@ class MatchSystem {
     match.phase = 'ended';
     match.endsAt = Date.now();
 
-    const event = {
+    const event: TMatchEndedEvent = {
       type: 'match:ended',
       id: matchId,
-      at: match.endsAt,
+      at: match.endsAt!,
     };
 
     broadcast(event);
@@ -141,14 +143,8 @@ class MatchSystem {
       // Reset player stats using the stats class
       player.stats.reset();
 
-      // Broadcast score reset to all clients
-      broadcast({
-        type: 'score:update',
-        playerId: player.id,
-        kills: 0,
-        deaths: 0,
-        assists: 0
-      });
+      // Broadcast score reset to all clients via typed event
+      eventBus.emit(new ScoreUpdateEvent(player.id, 0, 0, 0).toEmit());
     }
 
     console.log('Reset all player scores for match start');

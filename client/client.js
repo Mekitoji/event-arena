@@ -22,9 +22,16 @@ const state = {
     startsAt: null, // epoch ms
     endsAt: null,   // epoch ms (optional)
   },
+  announcements: [], // [{kind:'streak', playerId, name, category, streak, message, timestamp}]
 };
 
 ws.addEventListener('open', () => {
+  // Subscribe to server-driven HUD widgets first
+  ws.send(JSON.stringify({
+    type: 'cmd:hud:subscribe',
+    widgets: ['scoreboard', 'match', 'feed', 'streaks', 'announcements'],
+  }));
+
   // Include optional matchId so server can bind player to a match, if already created
   ws.send(JSON.stringify({
     type: 'cmd:join',
@@ -125,49 +132,43 @@ ws.addEventListener('message', (ev) => {
     state.match.endsAt = e.at ?? Date.now();
   }
 
-  // Score tracking events
-  if (e.type === 'score:update') {
-    state.scores.set(e.playerId, {
-      kills: e.kills,
-      deaths: e.deaths,
-      assists: e.assists
-    });
-  }
   if (e.type === 'player:kill') {
-    // Visual feedback for kills (could add kill feed later)
-    console.log(`${e.killerId} killed ${e.victimId}${e.assistIds ? ` (assists: ${e.assistIds.join(', ')})` : ''}`);
+    // keep for potential VFX; scoreboard/feed widgets handle UI updates
   }
 
-  // Kill feed and streak events
-  if (e.type === 'feed:entry') {
-    console.log('Received kill feed entry:', e);
-    // Add kill feed entry
-    state.killFeed.push({
-      killer: e.killer,
-      victim: e.victim,
-      weapon: e.weapon,
-      assistIds: e.assistIds,
-      timestamp: e.timestamp
-    });
-
-    console.log('Kill feed now has', state.killFeed.length, 'entries:', state.killFeed);
-
-    // Keep only last 5 entries
-    if (state.killFeed.length > 5) {
-      state.killFeed.shift();
+  // HUD widgets (server-driven)
+  if (e.type === 'hud:scoreboard:update') {
+    // Rebuild scores map and sync player hp/dead/name
+    const scores = new Map();
+    for (const r of e.rows || []) {
+      scores.set(r.playerId, { kills: r.kills || 0, deaths: r.deaths || 0, assists: r.assists || 0 });
+      const p = state.players.get(r.playerId) || { id: r.playerId, pos: { x: 0, y: 0 }, hp: r.hp ?? 100, name: r.name };
+      if (r.name) p.name = r.name;
+      if (typeof r.hp === 'number') p.hp = r.hp;
+      if (typeof r.isDead === 'boolean') p.isDead = r.isDead;
+      state.players.set(r.playerId, p);
     }
+    state.scores = scores;
   }
-
-  if (e.type === 'streak:changed') {
-    // Update player's streak
-    state.streaks.set(e.playerId, e.streak);
-
-    // Log streak changes for feedback
-    if (e.streak > e.previousStreak && e.streak > 1) {
-      console.log(`Player ${e.playerId} is on a ${e.streak} kill streak!`);
-    } else if (e.streak === 0 && e.previousStreak > 0) {
-      console.log(`Player ${e.playerId}'s ${e.previousStreak} kill streak ended.`);
+  if (e.type === 'hud:match:update') {
+    state.match.id = e.id ?? null;
+    state.match.mode = e.mode ?? null;
+    state.match.phase = e.phase ?? 'idle';
+    state.match.startsAt = e.startsAt ?? null;
+    state.match.endsAt = e.endsAt ?? null;
+  }
+  if (e.type === 'hud:feed:update') {
+    state.killFeed = Array.isArray(e.items) ? e.items.slice() : [];
+  }
+  if (e.type === 'hud:streaks:update') {
+    const m = new Map();
+    if (e.streaks) {
+      for (const [pid, val] of Object.entries(e.streaks)) m.set(pid, val);
     }
+    state.streaks = m;
+  }
+  if (e.type === 'hud:announce:update') {
+    state.announcements = Array.isArray(e.items) ? e.items.slice() : [];
   }
 
   if (e.type === 'projectile:moved') {
@@ -394,6 +395,33 @@ function draw() {
     }
   }
 
+  // Center-top streak announcement banner (3s TTL)
+  if (Array.isArray(state.announcements) && state.announcements.length) {
+    const nowEpoch = Date.now();
+    const visible = state.announcements.filter(a => nowEpoch - a.timestamp < 3000);
+    if (visible.length) {
+      const ann = visible[visible.length - 1]; // latest
+      const text = `${ann.name || ann.playerId} ${ann.message} (${ann.streak})`;
+      ctx.font = '18px sans-serif';
+      ctx.textBaseline = 'top';
+      const paddingX = 16;
+      const paddingY = 8;
+      const width = ctx.measureText(text).width + paddingX * 2;
+      const height = 32;
+      const x = (cv.width - width) / 2;
+      const y = 96;
+      const alpha = Math.max(0.2, 1 - (nowEpoch - ann.timestamp) / 3000);
+      const isMe = ann.playerId === state.me;
+      ctx.fillStyle = isMe ? `rgba(0,120,0,${0.75 * alpha})` : `rgba(0,0,0,${0.6 * alpha})`;
+      ctx.fillRect(x, y, width, height);
+      ctx.strokeStyle = isMe ? `rgba(0,220,0,${alpha})` : `rgba(255,255,255,${alpha})`;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, width, height);
+      ctx.fillStyle = isMe ? `rgba(230,255,230,${alpha})` : `rgba(255,255,255,${alpha})`;
+      ctx.fillText(text, x + paddingX, y + paddingY);
+    }
+  }
+
   // draw map obstacles
   if (state.map && Array.isArray(state.map.obstacles)) {
     ctx.fillStyle = '#777';
@@ -612,9 +640,8 @@ function draw() {
   ctx.font = '11px sans-serif';
   ctx.textBaseline = 'top';
 
-  // Clean up old kill feed entries (older than 10 seconds)
+  // Server is authoritative for feed TTL and item capping
   const feedNow = Date.now();
-  state.killFeed = state.killFeed.filter(entry => feedNow - entry.timestamp < 10000);
 
 
   for (const entry of state.killFeed) {
@@ -625,7 +652,6 @@ function draw() {
     ctx.fillStyle = `rgba(0,0,0,${0.6 * alpha})`;
     ctx.fillRect(feedX, feedY, 280, 16);
 
-    console.log(entry);
     // Get player names
     const killerPlayer = state.players.get(entry.killer);
     const victimPlayer = state.players.get(entry.victim);
