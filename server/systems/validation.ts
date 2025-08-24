@@ -1,6 +1,6 @@
 import { eventBus } from "../core/event-bus";
 import { CmdJoin, Skills } from "../core/types/cmd.type";
-import { TCmdMoveEvent, TCmdCastEvent, TCmdLeaveEvent } from "../core/types/events.type";
+import { TCmdMoveEvent, TCmdCastEvent, TCmdLeaveEvent, TCmdAimEvent } from "../core/types/events.type";
 import { Vec2 } from "../core/types/vec2.type";
 import { World } from "../core/world";
 import { Player } from "../entities/player";
@@ -10,7 +10,8 @@ import {
   PlayerDiedEvent,
   PlayerJoinedEvent,
   ProjectileSpawnedEvent,
-  DashStartedEvent
+  DashStartedEvent,
+  PlayerAimedEvent
 } from "../events";
 
 const DEFAULT_POS: Vec2 = { x: 100, y: 100 };
@@ -52,6 +53,14 @@ eventBus.on('cmd:move', (e: TCmdMoveEvent) => {
 });
 
 // systems/validation.ts
+// Accept aim commands from any source (bots or clients)
+eventBus.on('cmd:aim', (e: TCmdAimEvent) => {
+  const p = World.players.get(e.playerId);
+  if (!p || p.isDeadPlayer()) return;
+  p.setFaceDirection(e.dir);
+  // Emit aimed immediately for responsiveness
+  eventBus.emit(new PlayerAimedEvent(e.playerId, p.faceTarget!).toEmit());
+});
 eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
   const p = World.players.get(e.playerId);
   if (!p || p.isDeadPlayer()) return;
@@ -59,15 +68,15 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
   const now = Date.now();
   const cdKey = `cd:${e.skill}`;
 
-  // параметры по умолчанию
+  // Default parameters
   const baseSpeed = Config.projectiles.baseSpeed;
 
   if (e.skill === Skills.SHOOT) {
-    // проверка кулдауна
+    // Cooldown check
     if ((p.cd[cdKey] ?? 0) > now) return;
     p.cd[cdKey] = now + Config.cooldowns.shoot;
 
-    // расчёт направления выстрела
+    // Compute shooting direction
     const dir = p.face ?? (p.vel.x || p.vel.y ? p.vel : { x: 1, y: 0 });
     const mag = Math.hypot(dir.x, dir.y) || 1;
     const vel = { x: (dir.x / mag) * baseSpeed, y: (dir.y / mag) * baseSpeed };
@@ -90,21 +99,21 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
   }
 
   if (e.skill === Skills.SHOTGUN) {
-    // более длинный кулдаун для дробовика
+    // Longer cooldown for shotgun
     if ((p.cd[cdKey] ?? 0) > now) return;
     p.cd[cdKey] = now + Config.cooldowns.shotgun;
 
-    // направление взгляда
+    // Facing direction
     const face = p.face ?? { x: 1, y: 0 };
     const fmag = Math.hypot(face.x, face.y) || 1;
     const fx = face.x / fmag, fy = face.y / fmag;
 
-    // база ортогонали для смещения угла
+    // Base orthogonal for angle offset
     const pelletCount = Config.projectiles.pellet.count;
     const maxSpread = Config.projectiles.pellet.spread; // радиан +- ~14°
 
     for (let i = 0; i < pelletCount; i++) {
-      // равномерное распределение углов внутри [-maxSpread, +maxSpread]
+      // Even distribution of angles in [-maxSpread, +maxSpread]
       const t = pelletCount <= 1 ? 0 : (i / (pelletCount - 1)) * 2 - 1; // [-1,1]
       const ang = t * maxSpread;
       const cs = Math.cos(ang), sn = Math.sin(ang);

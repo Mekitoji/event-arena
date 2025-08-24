@@ -12,7 +12,7 @@ import {
 } from "../events";
 import { Config } from "../config";
 
-const EPS = Config.combat.movementThreshold; // минимальный порог движения для рассылки
+const EPS = Config.combat.movementThreshold; // Minimum movement threshold to broadcast
 const lastBroadcastPos = new Map<string, { x: number; y: number }>();
 const lastFace = new Map<string, { x: number; y: number }>();
 const MAX_TURN_SPEED = Config.player.turnSpeed; // rad/s (from config)
@@ -93,7 +93,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
     if (p.isDeadPlayer()) continue; // Skip movement for dead players
     const oldX = p.pos.x, oldY = p.pos.y;
 
-    // эффективная скорость (движение + нокбэк если активен)
+    // Effective speed (movement + knockback if active)
     let vx = p.vel.x, vy = p.vel.y;
     // dash boost
     const now = Date.now();
@@ -102,7 +102,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
       vx *= p.dashFactor;
       vy *= p.dashFactor;
     }
-    // emit dash ended when transitions
+    // Emit dash ended when state transitions
     if (!dashActive && dashing.has(p.id)) {
       dashing.delete(p.id);
       eventBus.emit(new DashEndedEvent(p.id).toEmit());
@@ -116,7 +116,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
       p.kb = undefined;
     }
 
-    // интеграция + коллизии с препятствиями (радиус игрока ~16)
+    // Integration + collisions with obstacles (player radius ~16)
     // Use substeps to avoid tunneling at higher speeds (e.g., with haste/dash)
     const rr = Config.player.radius; // player radius in world units
     const moveDist = Math.hypot(vx, vy) * dt;
@@ -130,7 +130,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
       p.pos.x = solved.x; p.pos.y = solved.y;
     }
 
-    // вращаем лицо к целевому направлению с ограниченной скоростью
+    // Rotate face toward the target direction with limited speed
     if (p.face && p.faceTarget) {
       // normalize current just in case
       const fm = Math.hypot(p.face.x, p.face.y) || 1;
@@ -142,7 +142,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
       p.face = nf;
     }
 
-    // если реально сдвинулись — проверяем против последней отправленной позиции
+    // If actually moved — check against the last broadcast position
     const lb = lastBroadcastPos.get(p.id);
     const movedNow = Math.abs(p.pos.x - oldX) > EPS || Math.abs(p.pos.y - oldY) > EPS;
     const changedSinceLastSend =
@@ -178,7 +178,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
     }
   }
 
-  // снаряды как раньше
+  // Projectiles logic
   const projectilesToRemove: string[] = [];
   
   for (const pr of World.projectiles.values()) {
@@ -195,7 +195,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
       continue;
     }
 
-    // столкновение с препятствиями
+    // Collision with obstacles
     const col = collideProjectile(pr);
     if (col.hit) {
       if (pr.shouldExplodeOnCollision()) {
@@ -218,11 +218,11 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
       }
     }
 
-    // если вылетел за пределы — удаляем и уведомляем
+    // If went out of bounds — remove and notify
     if (pr.isOutOfBounds(World.bounds.w, World.bounds.h)) {
       projectilesToRemove.push(pr.id);
     } else {
-      // иначе отправляем новое положение
+      // Otherwise send new position
       eventBus.emit(new ProjectileMovedEvent(pr.pos, pr.id).toEmit());
     }
   }

@@ -117,7 +117,7 @@ export function createWsServer(port = DEFAULT_WS_PORT) {
         deadUntil.delete(id);
         const playersInfo: { id: string; name: string; pos: Vec2 }[] = [];
 
-        // отправить информацию о других игроках только этому клиенту
+        // Send information about other players only to this client
 
         for (const [pid, player] of World.players.entries()) {
           if (pid === id) continue;
