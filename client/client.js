@@ -253,8 +253,17 @@ ws.addEventListener('message', (ev) => {
 });
 
 const keys = new Set();
-addEventListener('keydown', e => keys.add(e.key.toLowerCase()));
-addEventListener('keyup', e => keys.delete(e.key.toLowerCase()));
+// Track pressed movement keys; clear on blur/visibility changes to avoid stuck keys when tab is hidden
+addEventListener('keydown', (e) => {
+  const key = (e.key || '').toLowerCase();
+  if (key) keys.add(key);
+});
+addEventListener('keyup', (e) => {
+  const key = (e.key || '').toLowerCase();
+  if (key) keys.delete(key);
+});
+addEventListener('blur', () => keys.clear());
+addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible') keys.clear(); });
 addEventListener('mousedown', (e) => {
   if (!state.me) return;
   const me = state.players.get(state.me);
@@ -283,16 +292,23 @@ cv.addEventListener('mousemove', (ev) => {
 });
 
 addEventListener('keydown', (e) => {
-  const key = e.key.toLowerCase();
-  if (key === 'shift') {
+  const key = (e.key || '').toLowerCase();
+  const code = e.code;
+
+  // Dash on Shift
+  if (key === 'shift' || code === 'ShiftLeft' || code === 'ShiftRight') {
     if (!state.me) return;
     const me = state.players.get(state.me);
     if (me) {
       ws.send(JSON.stringify({ type: 'cmd:cast', playerId: state.me, skill: 'skill:dash' }));
     }
   }
-  if (key === ' ') {
+
+  // Rocket (alive) or Respawn (dead) on Space
+  const isSpace = code === 'Space' || key === ' ';
+  if (isSpace) {
     e.preventDefault();
+    e.stopPropagation();
     if (!state.me) return;
     const me = state.players.get(state.me);
     const isDead = !me || me.isDead;
