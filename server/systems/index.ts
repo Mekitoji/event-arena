@@ -4,4 +4,3 @@ import './match.ts';
 import './movement.ts';
 import './pickups.ts';
 import './validation.ts';
-import './hud.ts';
