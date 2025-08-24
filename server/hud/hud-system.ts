@@ -21,7 +21,8 @@ class HudSystem {
     const triggers: SourceEventType[] = [
       'player:join', 'player:leave', 'player:die', 'score:update', 'session:started',
       'match:created', 'match:started', 'match:ended', 'tick:post',
-      'feed:entry', 'streak:changed'
+      'feed:entry', 'streak:changed',
+      'damage:applied', 'buff:applied'
     ];
     for (const t of triggers) eventBus.on(t, (e) => this.onAnyEvent(e as SourceEvents));
     setTimeout(() => this.pushAll(), 200);

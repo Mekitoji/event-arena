@@ -13,6 +13,13 @@ export class ScoreboardWidget implements HudWidget<'scoreboard'> {
     return { type: 'hud:scoreboard:update', rows };
   }
   onEvent(e: SourceEvents): boolean {
-    return e.type === 'score:update' || e.type === 'player:join' || e.type === 'player:leave' || e.type === 'player:die' || e.type === 'session:started';
+    // Update scoreboard when scores or roster change, and when HP could change (damage/heal)
+    return e.type === 'score:update'
+      || e.type === 'player:join'
+      || e.type === 'player:leave'
+      || e.type === 'player:die'
+      || e.type === 'session:started'
+      || e.type === 'damage:applied'
+      || e.type === 'buff:applied';
   }
 }
