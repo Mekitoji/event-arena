@@ -1,5 +1,5 @@
-import { Config } from "../config";
 import { eventBus } from "../core/event-bus";
+import { Config } from "../config";
 import { CmdJoin, Skills } from "../core/types/cmd.type";
 import { TCmdAimEvent, TCmdCastEvent, TCmdLeaveEvent, TCmdMoveEvent } from "../core/types/events.type";
 import { Vec2 } from "../core/types/vec2.type";
@@ -9,6 +9,7 @@ import { Projectile } from "../entities/projectile";
 import {
   DashStartedEvent,
   PlayerAimedEvent,
+  PlayerDiedEvent,
   PlayerJoinedEvent,
   ProjectileSpawnedEvent
 } from "../events";

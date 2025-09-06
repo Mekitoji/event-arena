@@ -31,6 +31,7 @@
     "eslint-plugin-n": "^17.21.3",
     "eslint-plugin-promise": "^7.2.1",
     "eslint-plugin-unused-imports": "^4.1.4",
+    "globals": "^16.3.0",
     "tsx": "^4.20.4",
     "typescript": "^5.9.2",
     "typescript-eslint": "^8.39.1"

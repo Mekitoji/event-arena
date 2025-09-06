@@ -10,6 +10,7 @@ import {
   PlayerMoveCmdEvent,
   PlayerCastCmdEvent,
 } from "../events";
+import { TCmdLeaveEvent, TPlayerDieEvent } from "../core/types/events.type";
 
 interface BotState {
   id: string;
@@ -36,7 +37,7 @@ export class BotManager {
     setTimeout(() => this.ensureBots(), 1500);
 
     // Respawn on death
-    eventBus.on('player:die', (e: { type: 'player:die'; playerId: string }) => {
+    eventBus.on('player:die', (e: TPlayerDieEvent) => {
       if (!this.botIds.has(e.playerId)) return;
       const p = World.players.get(e.playerId);
       if (!p) return;
@@ -51,9 +52,9 @@ export class BotManager {
 
     // AI loop
     eventBus.on('tick:pre', () => this.onTick());
-    
+
     // Clean up bot tracking on leave
-    eventBus.on('cmd:leave', (e: { playerId: string }) => {
+    eventBus.on('cmd:leave', (e: TCmdLeaveEvent) => {
       if (this.botIds.has(e.playerId)) {
         this.botIds.delete(e.playerId);
         this.bots.delete(e.playerId);
@@ -108,7 +109,7 @@ export class BotManager {
   private emitMoveIfChanged(botId: string, dir: Vec2) {
     const state = this.bots.get(botId);
     if (!state) return;
-    
+
     // Only emit if direction actually changed
     if (!state.lastMoveDir || !this.sameDir(dir, state.lastMoveDir)) {
       eventBus.emit(new PlayerMoveCmdEvent(botId, dir).toEmit());

@@ -1,5 +1,5 @@
 import { eventBus } from "../core/event-bus";
-import { TCmdLeaveEvent, TPlayerJoinEvent, TPlayerLeaveEvent, TTickPreEvent } from "../core/types/events.type";
+import { TCmdLeaveEvent, TPlayerJoinEvent, TTickPreEvent } from "../core/types/events.type";
 import { World } from "../core/world";
 import {
   ProjectileDespawnedEvent,

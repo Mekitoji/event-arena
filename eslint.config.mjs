@@ -1,6 +1,7 @@
 // @ts-check
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
+import globals from "globals";
 
 /** @type {import('eslint').Linter.Config[]} */
 export default [
@@ -23,7 +24,7 @@ export default [
       ecmaVersion: 2022,
       sourceType: "module",
       globals: {
-        console: "readonly",
+        ...globals.node,
       },
     },
     rules: {},
@@ -35,15 +36,7 @@ export default [
       ecmaVersion: 2022,
       sourceType: "module",
       globals: {
-        window: "readonly",
-        document: "readonly",
-        console: "readonly",
-        WebSocket: "readonly",
-        location: "readonly",
-        addEventListener: "readonly",
-        setInterval: "readonly",
-        requestAnimationFrame: "readonly",
-        performance: "readonly",
+        ...globals.browser,
       },
     },
     plugins: {

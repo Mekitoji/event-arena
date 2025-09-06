@@ -28,7 +28,7 @@ function renderRows(items) {
     // Show the journal type more clearly
     const journalType = it.id.startsWith('match_') ? 'match' : 'session';
     const displayId = it.id.length > 40 ? it.id.substring(0, 40) + '...' : it.id;
-    
+
     // Extract just the match ID from journals that have one
     let matchDisplay = '';
     if (it.matchId) {
@@ -38,7 +38,7 @@ function renderRows(items) {
     } else if (journalType === 'session') {
       matchDisplay = '<span class="muted">—</span>';
     }
-    
+
     tr.innerHTML = `
       <td class="mono" title="${it.id}">${displayId}</td>
       <td>${matchDisplay}</td>
