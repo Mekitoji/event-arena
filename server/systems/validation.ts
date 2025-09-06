@@ -1,23 +1,25 @@
+import { Config } from "../config";
 import { eventBus } from "../core/event-bus";
 import { CmdJoin, Skills } from "../core/types/cmd.type";
-import { TCmdMoveEvent, TCmdCastEvent, TCmdLeaveEvent, TCmdAimEvent } from "../core/types/events.type";
+import { TCmdAimEvent, TCmdCastEvent, TCmdLeaveEvent, TCmdMoveEvent } from "../core/types/events.type";
 import { Vec2 } from "../core/types/vec2.type";
 import { World } from "../core/world";
 import { Player } from "../entities/player";
 import { Projectile } from "../entities/projectile";
-import { Config } from "../config";
 import {
-  PlayerDiedEvent,
-  PlayerJoinedEvent,
-  ProjectileSpawnedEvent,
   DashStartedEvent,
-  PlayerAimedEvent
+  PlayerAimedEvent,
+  PlayerJoinedEvent,
+  ProjectileSpawnedEvent
 } from "../events";
 
 const DEFAULT_POS: Vec2 = { x: 100, y: 100 };
 const DEFAULT_VEL: Vec2 = { x: 0, y: 0 };
 const DEFAULT_FACE: Vec2 = { x: 0, y: 0 };
 // const DEFAULT_HP = 100; // Currently unused but kept for future use
+
+// Track last movement direction to avoid redundant cmd:move processing
+const lastMoveDir = new Map<string, Vec2>();
 
 
 eventBus.on('cmd:join', (e: CmdJoin) => {
@@ -32,7 +34,7 @@ eventBus.on('cmd:join', (e: CmdJoin) => {
     { ...DEFAULT_VEL },
     { ...DEFAULT_FACE }
   );
-  
+
   World.players.set(id, player);
   eventBus.emit(new PlayerJoinedEvent(id, name).toEmit());
 });
@@ -42,6 +44,18 @@ eventBus.on('cmd:move', (e: TCmdMoveEvent) => {
   if (!player || player.isDeadPlayer()) return;
 
   const { x, y } = e.dir;
+
+  // Check if movement direction actually changed to avoid redundant processing
+  const lastDir = lastMoveDir.get(e.playerId);
+  const EPSILON = 0.001; // Small threshold for floating point comparison
+  if (lastDir &&
+    Math.abs(lastDir.x - x) < EPSILON &&
+    Math.abs(lastDir.y - y) < EPSILON) {
+    return; // Direction hasn't changed, skip processing
+  }
+
+  // Update last movement direction
+  lastMoveDir.set(e.playerId, { x, y });
 
   const len = Math.hypot(x, y) || 1;
   // update velocity with haste if active
@@ -92,7 +106,7 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
     });
     World.projectiles.set(id, projectile);
     eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'bullet').toEmit());
-    
+
     // Track shot fired for accuracy
     p.addShotFired();
     return;
@@ -132,7 +146,7 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
       });
       World.projectiles.set(id, projectile);
       eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'pellet').toEmit());
-      
+
       // Each pellet counts as a shot fired for accuracy
       p.addShotFired();
     }
@@ -162,7 +176,7 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
     });
     World.projectiles.set(id, projectile);
     eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'rocket').toEmit());
-    
+
     // Track rocket shot for accuracy
     p.addShotFired();
     return;
@@ -182,6 +196,9 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
 });
 
 eventBus.on('cmd:leave', (e: TCmdLeaveEvent) => {
+  // Remove the player from the world
   World.players.delete(e.playerId);
-  eventBus.emit(new PlayerDiedEvent(e.playerId).toEmit());
+  eventBus.emit(new PlayerDiedEvent(e.playerId).toEmit())
+  // Clean up movement tracking
+  lastMoveDir.delete(e.playerId);
 });

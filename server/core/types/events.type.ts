@@ -58,7 +58,7 @@ export type TDamageAppliedEvent = BaseSourceEvent<'damage:applied', { targetId: 
 export type TExplosionSpawnedEvent = BaseSourceEvent<'explosion:spawned', { pos: Vec2, radius: number, dmg: number }>;
 
 // Knockback effect events
-export type TKnockbackAppliedEvent = BaseSourceEvent<'knockback:applied', { targetId: string, vec: Vec2, power: number }>;
+export type TKnockbackAppliedEvent = BaseSourceEvent<'knockback:applied', { targetId: string, vec: Vec2, power: number, source?: string }>;
 
 // Dash skill events
 export type TDashStartedEvent = BaseSourceEvent<'dash:started', { playerId: string, duration: number, iframes: boolean }>;

@@ -8,7 +8,8 @@ export class KnockbackAppliedEvent extends BaseEvent<TKnockbackAppliedEvent> {
   constructor(
     private readonly targetId: string,
     private readonly vec: Vec2,
-    private readonly power: number
+    private readonly power: number,
+    private readonly source?: string
   ) { 
     super(); 
   }
@@ -18,7 +19,8 @@ export class KnockbackAppliedEvent extends BaseEvent<TKnockbackAppliedEvent> {
       type: this.type, 
       targetId: this.targetId,
       vec: this.vec,
-      power: this.power
+      power: this.power,
+      source: this.source
     };
   }
 
@@ -27,7 +29,8 @@ export class KnockbackAppliedEvent extends BaseEvent<TKnockbackAppliedEvent> {
       type: this.type, 
       targetId: this.targetId,
       vec: this.vec,
-      power: this.power
+      power: this.power,
+      source: this.source
     });
   }
 }

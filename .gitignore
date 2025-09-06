@@ -152,3 +152,8 @@ temp/
 
 # AI Assistant configuration
 WARP.md
+
+# Runtime artifacts (journals)
+# Preferred new default base
+journals/
+artifacts/

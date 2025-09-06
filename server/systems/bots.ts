@@ -16,6 +16,7 @@ interface BotState {
   name: string;
   nextThinkAt: number;
   nextFireAt: number;
+  lastMoveDir?: Vec2; // Track last movement direction to avoid spam
 }
 
 export class BotManager {
@@ -50,6 +51,14 @@ export class BotManager {
 
     // AI loop
     eventBus.on('tick:pre', () => this.onTick());
+    
+    // Clean up bot tracking on leave
+    eventBus.on('cmd:leave', (e: { playerId: string }) => {
+      if (this.botIds.has(e.playerId)) {
+        this.botIds.delete(e.playerId);
+        this.bots.delete(e.playerId);
+      }
+    });
   }
 
   private randomName(): string {
@@ -91,6 +100,22 @@ export class BotManager {
     return best;
   }
 
+  private sameDir(a: Vec2, b: Vec2): boolean {
+    const EPSILON = 0.001;
+    return Math.abs(a.x - b.x) < EPSILON && Math.abs(a.y - b.y) < EPSILON;
+  }
+
+  private emitMoveIfChanged(botId: string, dir: Vec2) {
+    const state = this.bots.get(botId);
+    if (!state) return;
+    
+    // Only emit if direction actually changed
+    if (!state.lastMoveDir || !this.sameDir(dir, state.lastMoveDir)) {
+      eventBus.emit(new PlayerMoveCmdEvent(botId, dir).toEmit());
+      state.lastMoveDir = { ...dir };
+    }
+  }
+
   private separationVector(botId: string): Vec2 {
     const me = World.players.get(botId);
     if (!me) return { x: 0, y: 0 };
@@ -127,7 +152,7 @@ export class BotManager {
 
     const aimDir = { x: dx / mag, y: dy / mag };
     eventBus.emit(new PlayerAimCmdEvent(botId, aimDir).toEmit());
-    eventBus.emit(new PlayerMoveCmdEvent(botId, dir).toEmit());
+    this.emitMoveIfChanged(botId, dir);
   }
 
   private maybeShoot(botId: string, targetPos: Vec2, now: number) {
@@ -169,7 +194,8 @@ export class BotManager {
           this.aimAndMoveTowards(id, target.pos);
           this.maybeShoot(id, target.pos, now);
         } else {
-          eventBus.emit(new PlayerMoveCmdEvent(id, { x: 0, y: 0 }).toEmit());
+          // Only emit stop movement if direction changed
+          this.emitMoveIfChanged(id, { x: 0, y: 0 });
         }
       } else {
         const target = this.findNearestHuman(id);

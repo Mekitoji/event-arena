@@ -48,7 +48,7 @@ eventBus.on('tick:post', () => {
               const power = damage * knockbackPerDamage;
               // Use Player class method for knockback
               t.applyKnockback(nx * power, ny * power, Config.combat.knockbackDuration);
-              eventBus.emit(new KnockbackAppliedEvent(t.id, { x: nx, y: ny }, power).toEmit());
+              eventBus.emit(new KnockbackAppliedEvent(t.id, { x: nx, y: ny }, power, pr.owner).toEmit());
             }
           }
         } else {
@@ -103,7 +103,7 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
       const nx = dx / dist, ny = dy / dist;
       const power = e.amount * Config.getKnockbackPower();
       t.kb = { vx: nx * power, vy: ny * power, until: Date.now() + Config.combat.knockbackDuration };
-      eventBus.emit(new KnockbackAppliedEvent(t.id, { x: nx, y: ny }, power).toEmit());
+      eventBus.emit(new KnockbackAppliedEvent(t.id, { x: nx, y: ny }, power, e.source).toEmit());
     }
   }
 

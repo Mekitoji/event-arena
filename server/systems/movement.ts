@@ -1,5 +1,5 @@
 import { eventBus } from "../core/event-bus";
-import { TPlayerJoinEvent, TTickPreEvent } from "../core/types/events.type";
+import { TCmdLeaveEvent, TPlayerJoinEvent, TPlayerLeaveEvent, TTickPreEvent } from "../core/types/events.type";
 import { World } from "../core/world";
 import {
   ProjectileDespawnedEvent,
@@ -43,8 +43,8 @@ function resolveCircleRect(px: number, py: number, r: number, rx: number, ry: nu
   const cy = clamp(py, ry, ry + rh);
   const dx = px - cx;
   const dy = py - cy;
-  const dist2 = dx*dx + dy*dy;
-  if (dist2 > r*r) return { px, py, collided: false };
+  const dist2 = dx * dx + dy * dy;
+  if (dist2 > r * r) return { px, py, collided: false };
   const dist = Math.sqrt(dist2) || 1;
   const nx = dx / dist, ny = dy / dist;
   // push out by penetration
@@ -66,7 +66,7 @@ function checkPointInRect(x: number, y: number, rx: number, ry: number, rw: numb
   return x >= rx && x <= rx + rw && y >= ry && y <= ry + rh;
 }
 
-function collideProjectile(pr: { pos:{x:number,y:number}, vel:{x:number,y:number}, kind?: string }) {
+function collideProjectile(pr: { pos: { x: number, y: number }, vel: { x: number, y: number }, kind?: string }) {
   // after position update, if inside any rect, compute normal and bounce/delete
   for (const ob of World.map.obstacles) {
     if (ob.type !== 'rect') continue;
@@ -180,7 +180,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
 
   // Projectiles logic
   const projectilesToRemove: string[] = [];
-  
+
   for (const pr of World.projectiles.values()) {
     // Update projectile position using class method
     pr.update(dt);
@@ -226,7 +226,7 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
       eventBus.emit(new ProjectileMovedEvent(pr.pos, pr.id).toEmit());
     }
   }
-  
+
   // Remove expired/out-of-bounds projectiles
   for (const id of projectilesToRemove) {
     World.projectiles.delete(id);
@@ -238,4 +238,12 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
     lastFace.delete(e.playerId);
     lastHBPos.delete(e.playerId);
   });
+});
+
+// Clean up tracking data when players leave
+eventBus.on('cmd:leave', (e: TCmdLeaveEvent) => {
+  lastBroadcastPos.delete(e.playerId);
+  lastFace.delete(e.playerId);
+  lastHBPos.delete(e.playerId);
+  dashing.delete(e.playerId);
 });

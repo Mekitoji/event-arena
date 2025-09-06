@@ -63,8 +63,13 @@ const playerToConn = new Map<string, WebSocket>();
 const playerNames = new Map<string, string>();
 const deadUntil = new Map<string, number>();
 
-export function createWsServer(port = DEFAULT_WS_PORT) {
-  const wss = new WebSocketServer({ port });
+export function createWsServer(serverOrPort: number | import('node:http').Server = DEFAULT_WS_PORT) {
+  let wss: WebSocketServer;
+  if (typeof serverOrPort === 'number') {
+    wss = new WebSocketServer({ port: serverOrPort });
+  } else {
+    wss = new WebSocketServer({ server: serverOrPort });
+  }
 
   // Track death timestamps and notify the dead player with a respawn timestamp
   eventBus.on('player:die', (e: { type: 'player:die'; playerId: string }) => {
@@ -75,6 +80,11 @@ export function createWsServer(port = DEFAULT_WS_PORT) {
       ws.send(JSON.stringify({ type: 'player:dead', until }));
     }
   });
+
+  // Log listening info only when port is passed directly (attached server logs from HTTP module)
+  if (typeof serverOrPort === 'number') {
+    console.log(`WS listening ws://localhost:${serverOrPort}`);
+  }
 
   wss.on('connection', (ws: WebSocket) => {
     ws.on('message', (raw) => {
@@ -228,8 +238,6 @@ export function createWsServer(port = DEFAULT_WS_PORT) {
       console.warn('Failed to send map/pickups:', err);
     }
   });
-
-  console.log(`WS listening ws://localhost:${port}`);
 
   return wss;
 }
