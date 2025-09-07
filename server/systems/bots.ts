@@ -4,6 +4,7 @@ import { Player } from "../entities/player";
 import { SpawnManager } from "../core/spawn-manager";
 import { Vec2 } from "../core/types/vec2.type";
 import { Skills } from "../core/types/cmd.type";
+import { Config } from "../config";
 import {
   PlayerJoinedEvent,
   PlayerAimCmdEvent,
@@ -18,12 +19,13 @@ interface BotState {
   nextThinkAt: number;
   nextFireAt: number;
   lastMoveDir?: Vec2; // Track last movement direction to avoid spam
+  lastAimDir?: Vec2; // Track last aim direction to avoid spam
 }
 
 export class BotManager {
   private readonly BOT_COUNT = 2;
   private readonly THINK_INTERVAL_MS = 500;
-  private readonly FIRE_COOLDOWN_MS = 400;
+  private readonly FIRE_COOLDOWN_MS = Config.cooldowns.shoot;
   private readonly MAX_SHOOT_RANGE = 800;
   private readonly SEP_RADIUS = 120;
   private readonly SEP_STRENGTH = 0.7;
@@ -77,7 +79,12 @@ export class BotManager {
 
     const now = Date.now();
     this.botIds.add(id);
-    this.bots.set(id, { id, name, nextThinkAt: now, nextFireAt: now + 500 });
+    this.bots.set(id, { 
+      id, 
+      name, 
+      nextThinkAt: now + Math.floor(Math.random() * this.THINK_INTERVAL_MS),
+      nextFireAt: now + this.FIRE_COOLDOWN_MS 
+    });
     return id;
   }
 
@@ -117,6 +124,15 @@ export class BotManager {
     }
   }
 
+  private emitAimIfChanged(botId: string, dir: Vec2) {
+    const state = this.bots.get(botId);
+    if (!state) return;
+    if (!state.lastAimDir || !this.sameDir(dir, state.lastAimDir)) {
+      eventBus.emit(new PlayerAimCmdEvent(botId, dir).toEmit());
+      state.lastAimDir = { ...dir };
+    }
+  }
+
   private separationVector(botId: string): Vec2 {
     const me = World.players.get(botId);
     if (!me) return { x: 0, y: 0 };
@@ -152,7 +168,7 @@ export class BotManager {
     dir = { x: mixx / mixmag, y: mixy / mixmag };
 
     const aimDir = { x: dx / mag, y: dy / mag };
-    eventBus.emit(new PlayerAimCmdEvent(botId, aimDir).toEmit());
+    this.emitAimIfChanged(botId, aimDir);
     this.emitMoveIfChanged(botId, dir);
   }
 
@@ -193,14 +209,17 @@ export class BotManager {
         const target = this.findNearestHuman(id);
         if (target) {
           this.aimAndMoveTowards(id, target.pos);
-          this.maybeShoot(id, target.pos, now);
+          if (now >= state.nextFireAt) this.maybeShoot(id, target.pos, now);
         } else {
           // Only emit stop movement if direction changed
           this.emitMoveIfChanged(id, { x: 0, y: 0 });
         }
       } else {
-        const target = this.findNearestHuman(id);
-        if (target) this.maybeShoot(id, target.pos, now);
+        // Only attempt to shoot if we're off cooldown to avoid unnecessary target search
+        if (now >= state.nextFireAt) {
+          const target = this.findNearestHuman(id);
+          if (target) this.maybeShoot(id, target.pos, now);
+        }
       }
     }
   }
