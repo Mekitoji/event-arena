@@ -254,8 +254,10 @@ export class EventJournal {
    * Flush entries to storage (to be implemented with storage backend)
    */
   private flushToStorage(): void {
-    // This will be implemented when we add the storage backend
-    console.log(`[Journal] Would flush ${this.entries.length} entries to storage`);
+    // Placeholder: only log when debug is enabled to reduce noise
+    if (process.env.DEBUG_JOURNAL === 'true') {
+      console.log(`[Journal] Would flush ${this.entries.length} entries to storage`);
+    }
   }
 
   /**

@@ -1,11 +1,14 @@
 import * as fs from 'node:fs/promises';
+import * as fsStream from 'node:fs';
 import * as path from 'node:path';
 import * as zlib from 'node:zlib';
+import { pipeline as pipelineCb } from 'node:stream';
 import { promisify } from 'node:util';
 import { EventJournal, JournalMetadata } from './event-journal';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
+const pipeline = promisify(pipelineCb);
 
 /**
  * Storage configuration for journals
@@ -77,7 +80,19 @@ export class JournalStorage {
     const filename = this.generateFilename(metadata);
     const filePath = path.join(this.config.baseDir, subdir, filename);
 
-    // Convert journal to JSON
+    // Choose streaming path for larger journals to avoid OOM
+    const streamThreshold = Number(process.env.JOURNAL_STREAM_THRESHOLD ?? 10000);
+    if (metadata.eventCount >= streamThreshold) {
+      const outPath = await this.saveStreaming(journal, filePath);
+      if (this.config.createIndex) {
+        const stat = await fs.stat(outPath);
+        await this.updateIndex(metadata, outPath, stat.size);
+      }
+      console.log(`[JournalStorage] Saved journal ${metadata.id} (streaming) to ${filePath}`);
+      return outPath;
+    }
+
+    // Small journals: simple JSON encode
     const data = journal.toJSON();
     const jsonStr = JSON.stringify(data, null, 2);
 
@@ -92,7 +107,8 @@ export class JournalStorage {
 
     // Update index
     if (this.config.createIndex) {
-      await this.updateIndex(metadata, filePath, finalData);
+      const fileSize = Buffer.isBuffer(finalData) ? finalData.length : Buffer.byteLength(finalData);
+      await this.updateIndex(metadata, filePath, fileSize);
     }
 
     console.log(`[JournalStorage] Saved journal ${metadata.id} to ${filePath}`);
@@ -106,18 +122,18 @@ export class JournalStorage {
     // Check index first
     const indexEntry = this.indexCache.get(journalId);
     if (indexEntry) {
-      return this.loadFromPath(indexEntry.filePath, indexEntry.compressed);
+      return this.loadFromPath(indexEntry.filePath);
     }
 
     // Fall back to searching the filesystem
     const matchPath = await this.findJournalFile(journalId, 'matches');
     if (matchPath) {
-      return this.loadFromPath(matchPath, this.config.compress);
+      return this.loadFromPath(matchPath);
     }
 
     const sessionPath = await this.findJournalFile(journalId, 'sessions');
     if (sessionPath) {
-      return this.loadFromPath(sessionPath, this.config.compress);
+      return this.loadFromPath(sessionPath);
     }
 
     return null;
@@ -126,11 +142,12 @@ export class JournalStorage {
   /**
    * Load a journal from a specific file path
    */
-  private async loadFromPath(filePath: string, compressed: boolean): Promise<EventJournal> {
+  private async loadFromPath(filePath: string): Promise<EventJournal> {
     const data = await fs.readFile(filePath);
 
+    const isCompressed = filePath.endsWith('.gz');
     let jsonStr: string;
-    if (compressed) {
+    if (isCompressed) {
       const uncompressed = await gunzip(data);
       jsonStr = uncompressed.toString('utf-8');
     } else {
@@ -149,41 +166,17 @@ export class JournalStorage {
    * Stream save for large journals (saves incrementally)
    */
   async streamSave(journal: EventJournal, batchSize: number = 1000): Promise<string> {
+    // Backward-compatible wrapper that uses the true streaming path
     const metadata = journal.getMetadata();
     const subdir = metadata.matchId ? 'matches' : 'sessions';
     const filename = this.generateFilename(metadata);
     const filePath = path.join(this.config.baseDir, subdir, filename);
-
-    const entries = journal.getEntries();
-    const chunks: Buffer[] = [];
-
-    // Write metadata header
-    const header = JSON.stringify({
-      metadata,
-      entriesStart: true
-    }) + '\n';
-    chunks.push(Buffer.from(header));
-
-    // Write entries in batches
-    for (let i = 0; i < entries.length; i += batchSize) {
-      const batch = entries.slice(i, Math.min(i + batchSize, entries.length));
-      const batchJson = JSON.stringify(batch) + '\n';
-      chunks.push(Buffer.from(batchJson));
-    }
-
-    // Combine and potentially compress
-    let finalData: Buffer = Buffer.concat(chunks);
-    if (this.config.compress) {
-      finalData = await gzip(finalData) as Buffer;
-    }
-
-    await fs.writeFile(filePath, finalData);
-
+    const outPath = await this.saveStreaming(journal, filePath, batchSize);
     if (this.config.createIndex) {
-      await this.updateIndex(metadata, filePath, finalData);
+      const stat = await fs.stat(outPath);
+      await this.updateIndex(metadata, outPath, stat.size);
     }
-
-    return filePath;
+    return outPath;
   }
 
   /**
@@ -350,6 +343,88 @@ export class JournalStorage {
   }
 
   /**
+   * True streaming save: writes one JSON document with metadata and entries
+   * without materializing the whole JSON string in memory.
+   */
+  private async saveStreaming(
+    journal: EventJournal,
+    filePath: string,
+    batchSize: number = 1000
+  ): Promise<string> {
+    // Ensure parent directory exists
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+
+    const metadata = journal.getMetadata();
+    const entries = journal.getEntries();
+
+    // Create output stream (optionally gzip)
+    const fileWs = fsStream.createWriteStream(filePath);
+    const gz = this.config.compress ? zlib.createGzip() : null;
+    const out = gz ? gz : fileWs;
+
+    // Pipe gzip to file if needed
+    if (gz) {
+      // Connect gzip -> file
+      gz.pipe(fileWs);
+    }
+
+    // Helper to write to stream with backpressure support
+    const write = (chunk: string | Buffer): Promise<void> => {
+      return new Promise((resolve, reject) => {
+        const ok = out.write(chunk, (err?: Error | null) => {
+          if (err) reject(err);
+        });
+        if (ok) return resolve();
+        out.once('drain', resolve);
+      });
+    };
+
+    // Start JSON object and write metadata
+    // Stable snapshot of count to avoid writing new entries appended during save
+    const total = entries.length;
+
+    // Write: {"metadata":<metadata>,"entries":[
+    const metadataForSave = { ...metadata, eventCount: total };
+    const metadataOnly = JSON.stringify(metadataForSave);
+    await write('{"metadata":');
+    await write(metadataOnly);
+    await write(',"entries":[');
+
+    // Write entries in batches to reduce overhead
+    let first = true;
+    if (batchSize <= 0) batchSize = 1000;
+    for (let i = 0; i < total; i += batchSize) {
+      const end = Math.min(i + batchSize, total);
+      for (let j = i; j < end; j++) {
+        const entryStr = JSON.stringify(entries[j]);
+        if (!first) {
+          await write(',');
+        }
+        await write(entryStr);
+        first = false;
+      }
+    }
+
+    // Close array and object
+    await write(']}');
+
+    // Finalize streams
+    await new Promise<void>((resolve, reject) => {
+      if (gz) {
+        gz.end(() => resolve());
+      } else {
+        fileWs.end(() => resolve());
+      }
+      // Handle stream errors
+      out.once('error', reject);
+      fileWs.once('error', reject);
+      if (gz) gz.once('error', reject);
+    });
+
+    return filePath;
+  }
+
+  /**
    * Find a journal file by ID
    */
   private async findJournalFile(journalId: string, subdir: string): Promise<string | null> {
@@ -397,7 +472,7 @@ export class JournalStorage {
   private async updateIndex(
     metadata: JournalMetadata,
     filePath: string,
-    data: Buffer | string
+    fileSizeBytes: number
   ): Promise<void> {
     const entry: JournalIndexEntry = {
       id: metadata.id,
@@ -408,7 +483,7 @@ export class JournalStorage {
       playerIds: metadata.playerIds,
       filePath,
       compressed: this.config.compress,
-      fileSize: Buffer.isBuffer(data) ? data.length : Buffer.byteLength(data)
+      fileSize: fileSizeBytes
     };
 
     this.indexCache.set(metadata.id, entry);

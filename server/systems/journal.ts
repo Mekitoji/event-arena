@@ -37,6 +37,7 @@ class JournalSystem {
   private isRecording = false;
   private eventCounter = 0;
   private startTime = 0;
+  private saving: Promise<void> | null = null;
 
   constructor(config: JournalSystemConfig = {}) {
     // Resolve default journals directory with env overrides
@@ -65,7 +66,10 @@ class JournalSystem {
     });
 
     if (this.config.enabled) {
-      this.init();
+      // Fire and log failures instead of letting an unhandled rejection crash process
+      this.init().catch(err => {
+        console.error('[JournalSystem] Initialization failed:', err);
+      });
     }
   }
 
@@ -199,8 +203,11 @@ class JournalSystem {
   /**
    * Handle match created event
    */
-  private handleMatchCreated(event: TMatchCreatedEvent): void {
+  private async handleMatchCreated(event: TMatchCreatedEvent): Promise<void> {
     this.currentMatchId = event.id;
+
+    // Save the current journal before switching
+    await this.saveCurrentJournal();
 
     // Start a new journal for this match
     this.startNewJournal(event.id);
@@ -228,11 +235,6 @@ class JournalSystem {
    * Start a new journal
    */
   private startNewJournal(matchId?: string): void {
-    // Save the previous journal if it exists
-    if (this.currentJournal) {
-      this.saveCurrentJournal();
-    }
-
     // Generate a unique journal ID
     const journalId = this.generateJournalId(matchId);
 
@@ -280,18 +282,30 @@ class JournalSystem {
    * Save the current journal to storage
    */
   private async saveCurrentJournal(): Promise<void> {
-    if (!this.currentJournal) return;
-
-    try {
-      const metadata = this.currentJournal.getMetadata();
-      console.log(`[JournalSystem] Saving journal ${metadata.id} (${metadata.eventCount} events)`);
-
-      await this.storage.save(this.currentJournal);
-
-      console.log(`[JournalSystem] Journal saved successfully`);
-    } catch (error) {
-      console.error('[JournalSystem] Error saving journal:', error);
+    // Serialize saves to avoid overlapping writes from auto-save and rotation
+    if (this.saving) {
+      await this.saving.catch(() => {});
     }
+
+    const journal = this.currentJournal; // snapshot to avoid races if currentJournal changes during save
+    if (!journal) return;
+
+    this.saving = (async () => {
+      try {
+        const metadata = journal.getMetadata();
+        console.log(`[JournalSystem] Saving journal ${metadata.id} (${metadata.eventCount} events)`);
+
+        await this.storage.save(journal);
+
+        console.log(`[JournalSystem] Journal saved successfully`);
+      } catch (error) {
+        console.error('[JournalSystem] Error saving journal:', error);
+      }
+    })().finally(() => {
+      this.saving = null;
+    });
+
+    await this.saving;
   }
 
   /**

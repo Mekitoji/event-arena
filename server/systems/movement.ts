@@ -232,12 +232,13 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
     World.projectiles.delete(id);
     eventBus.emit(new ProjectileDespawnedEvent(id).toEmit());
   }
+});
 
-  eventBus.on('player:join', (e: TPlayerJoinEvent) => {
-    lastBroadcastPos.delete(e.playerId);
-    lastFace.delete(e.playerId);
-    lastHBPos.delete(e.playerId);
-  });
+// Reset per-player caches on join
+eventBus.on('player:join', (e: TPlayerJoinEvent) => {
+  lastBroadcastPos.delete(e.playerId);
+  lastFace.delete(e.playerId);
+  lastHBPos.delete(e.playerId);
 });
 
 // Clean up tracking data when players leave
