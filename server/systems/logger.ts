@@ -12,4 +12,22 @@ const all = [
   // 'tick:pre', 'tick:post',
 ] as const satisfies TEvent['type'][]
 
-for (const t of all) eventBus.on(t, (e: TEvent) => console.log('[EVENT]', e));
+// Attach logging only when explicitly enabled to avoid heavy console overhead
+if (process.env.DEBUG_EVENTS === 'true') {
+  const useJson = process.env.DEBUG_EVENTS_JSON === 'true';
+  for (const t of all) {
+    eventBus.on(t, (e: TEvent) => {
+      try {
+        if (useJson) {
+          // Compact JSON string avoids util.inspect overhead
+          console.log(`[EVENT] ${JSON.stringify(e)}`);
+        } else {
+          // Type-only log (fast path)
+          console.log(`[EVENT] ${e.type}`);
+        }
+      } catch {
+        // Ignore logging errors
+      }
+    });
+  }
+}
