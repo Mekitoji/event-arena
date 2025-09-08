@@ -1,7 +1,16 @@
+import { sound } from './sound.js';
+import { setupSoundUI } from './sound-ui.js';
+
 const ws = new WebSocket(`ws://${location.hostname}:8081`);
 const cv = document.getElementById('cv');
 const ctx = cv.getContext('2d');
 
+// Unlock/resume audio on first user interaction
+addEventListener('pointerdown', sound.unlock, { passive: true });
+addEventListener('keydown', sound.unlock, { passive: true });
+
+// Initialize Sound UI module
+setupSoundUI(sound);
 const state = {
   me: null,
   players: new Map(),
@@ -43,6 +52,8 @@ ws.addEventListener('open', () => {
 
 ws.addEventListener('message', (ev) => {
   const e = JSON.parse(ev.data);
+  // Pipe events to sound system (uses internal dedup for HUD deltas)
+  sound.onEvent(e, { me: state.me });
 
   if (e.type === 'session:started') {
     state.me = e.playerId;
@@ -264,12 +275,14 @@ addEventListener('keyup', (e) => {
 });
 addEventListener('blur', () => keys.clear());
 addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible') keys.clear(); });
-addEventListener('mousedown', (e) => {
+cv.addEventListener('mousedown', (e) => {
   if (!state.me) return;
   const me = state.players.get(state.me);
   if (!me) return;
+  if (me.isDead) return; // don't allow actions (and sounds) while dead
   if (e.button === 0) {
     // Left click: shoot
+    sound.onLocalAction('cast', { skill: 'skill:shoot' }); // immediate feedback
     ws.send(JSON.stringify({ type: 'cmd:cast', playerId: state.me, skill: 'skill:shoot' }));
   }
 });
@@ -281,6 +294,8 @@ cv.addEventListener('contextmenu', (e) => {
   if (!state.me) return;
   const me = state.players.get(state.me);
   if (!me) return;
+  if (me.isDead) return; // don't allow actions (and sounds) while dead
+  sound.onLocalAction('cast', { skill: 'skill:shotgun' });
   ws.send(JSON.stringify({ type: 'cmd:cast', playerId: state.me, skill: 'skill:shotgun' }));
 });
 
@@ -299,7 +314,8 @@ addEventListener('keydown', (e) => {
   if (key === 'shift' || code === 'ShiftLeft' || code === 'ShiftRight') {
     if (!state.me) return;
     const me = state.players.get(state.me);
-    if (me) {
+    if (me && !me.isDead) {
+      sound.onLocalAction('cast', { skill: 'skill:dash' });
       ws.send(JSON.stringify({ type: 'cmd:cast', playerId: state.me, skill: 'skill:dash' }));
     }
   }
@@ -314,6 +330,7 @@ addEventListener('keydown', (e) => {
     const isDead = !me || me.isDead;
     if (!isDead) {
       // alive: cast rocket
+      sound.onLocalAction('cast', { skill: 'skill:rocket' });
       ws.send(JSON.stringify({ type: 'cmd:cast', playerId: state.me, skill: 'skill:rocket' }));
     } else {
       // dead: try respawn
