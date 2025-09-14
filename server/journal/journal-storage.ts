@@ -2,42 +2,12 @@ import * as fs from 'node:fs/promises';
 import * as fsStream from 'node:fs';
 import * as path from 'node:path';
 import * as zlib from 'node:zlib';
-import { pipeline as pipelineCb } from 'node:stream';
 import { promisify } from 'node:util';
-import { EventJournal, JournalMetadata } from './event-journal';
+import { EventJournal } from './event-journal';
+import { JournalIndexEntry, JournalMetadata, StorageConfig } from './types';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
-const pipeline = promisify(pipelineCb);
-
-/**
- * Storage configuration for journals
- */
-export interface StorageConfig {
-  /** Base directory for storing journals */
-  baseDir: string;
-  /** Whether to compress journal files */
-  compress?: boolean;
-  /** Maximum file size in bytes before splitting (default: 50MB) */
-  maxFileSize?: number;
-  /** Whether to create an index file for quick lookups */
-  createIndex?: boolean;
-}
-
-/**
- * Journal index entry for quick lookups
- */
-interface JournalIndexEntry {
-  id: string;
-  matchId?: string;
-  createdAt: string;
-  duration: number;
-  eventCount: number;
-  playerIds: string[];
-  filePath: string;
-  compressed: boolean;
-  fileSize: number;
-}
 
 /**
  * JournalStorage handles persisting and loading event journals
@@ -51,7 +21,7 @@ export class JournalStorage {
       baseDir: config.baseDir,
       compress: config.compress ?? true,
       maxFileSize: config.maxFileSize ?? 50 * 1024 * 1024, // 50MB
-      createIndex: config.createIndex ?? true
+      createIndex: config.createIndex ?? true,
     };
   }
 
@@ -62,8 +32,12 @@ export class JournalStorage {
     await fs.mkdir(this.config.baseDir, { recursive: true });
 
     // Create subdirectories for organization
-    await fs.mkdir(path.join(this.config.baseDir, 'matches'), { recursive: true });
-    await fs.mkdir(path.join(this.config.baseDir, 'sessions'), { recursive: true });
+    await fs.mkdir(path.join(this.config.baseDir, 'matches'), {
+      recursive: true,
+    });
+    await fs.mkdir(path.join(this.config.baseDir, 'sessions'), {
+      recursive: true,
+    });
 
     // Load the index if it exists
     if (this.config.createIndex) {
@@ -81,14 +55,18 @@ export class JournalStorage {
     const filePath = path.join(this.config.baseDir, subdir, filename);
 
     // Choose streaming path for larger journals to avoid OOM
-    const streamThreshold = Number(process.env.JOURNAL_STREAM_THRESHOLD ?? 10000);
+    const streamThreshold = Number(
+      process.env.JOURNAL_STREAM_THRESHOLD ?? 10000,
+    );
     if (metadata.eventCount >= streamThreshold) {
       const outPath = await this.saveStreaming(journal, filePath);
       if (this.config.createIndex) {
         const stat = await fs.stat(outPath);
         await this.updateIndex(metadata, outPath, stat.size);
       }
-      console.log(`[JournalStorage] Saved journal ${metadata.id} (streaming) to ${filePath}`);
+      console.log(
+        `[JournalStorage] Saved journal ${metadata.id} (streaming) to ${filePath}`,
+      );
       return outPath;
     }
 
@@ -107,7 +85,9 @@ export class JournalStorage {
 
     // Update index
     if (this.config.createIndex) {
-      const fileSize = Buffer.isBuffer(finalData) ? finalData.length : Buffer.byteLength(finalData);
+      const fileSize = Buffer.isBuffer(finalData)
+        ? finalData.length
+        : Buffer.byteLength(finalData);
       await this.updateIndex(metadata, filePath, fileSize);
     }
 
@@ -165,7 +145,10 @@ export class JournalStorage {
   /**
    * Stream save for large journals (saves incrementally)
    */
-  async streamSave(journal: EventJournal, batchSize: number = 1000): Promise<string> {
+  async streamSave(
+    journal: EventJournal,
+    batchSize: number = 1000,
+  ): Promise<string> {
     // Backward-compatible wrapper that uses the true streaming path
     const metadata = journal.getMetadata();
     const subdir = metadata.matchId ? 'matches' : 'sessions';
@@ -182,17 +165,20 @@ export class JournalStorage {
   /**
    * List all available journals
    */
-  async list(filter?: { matchId?: string; playerIds?: string[] }): Promise<JournalIndexEntry[]> {
+  async list(filter?: {
+    matchId?: string;
+    playerIds?: string[];
+  }): Promise<JournalIndexEntry[]> {
     if (this.config.createIndex) {
       let entries = Array.from(this.indexCache.values());
 
       if (filter) {
         if (filter.matchId) {
-          entries = entries.filter(e => e.matchId === filter.matchId);
+          entries = entries.filter((e) => e.matchId === filter.matchId);
         }
         if (filter.playerIds && filter.playerIds.length > 0) {
-          entries = entries.filter(e =>
-            filter.playerIds!.some(pid => e.playerIds.includes(pid))
+          entries = entries.filter((e) =>
+            filter.playerIds!.some((pid) => e.playerIds.includes(pid)),
           );
         }
       }
@@ -202,7 +188,7 @@ export class JournalStorage {
 
     // Fall back to filesystem scan (live listing)
     const allFiles: JournalIndexEntry[] = [];
-    
+
     for (const subdir of ['matches', 'sessions']) {
       const dirPath = path.join(this.config.baseDir, subdir);
       try {
@@ -212,7 +198,7 @@ export class JournalStorage {
             const filePath = path.join(dirPath, file);
             const stat = await fs.stat(filePath);
             const compressed = file.endsWith('.gz');
-            
+
             // Extract full journal ID from filename (everything before the timestamp suffix)
             // Format: {id}_{ISO-timestamp}.json[.gz]
             // The ID itself may contain underscores (e.g., match_123_timestamp or session_timestamp_hash)
@@ -220,9 +206,14 @@ export class JournalStorage {
             // The timestamp is the last part after the final underscore that looks like a date
             const parts = nameWithoutExt.split('_');
             // Remove the ISO timestamp part (last segment that starts with a date pattern)
-            const timestampIndex = parts.findIndex(p => /^\d{4}-\d{2}-\d{2}/.test(p));
-            const id = timestampIndex > 0 ? parts.slice(0, timestampIndex).join('_') : nameWithoutExt;
-            
+            const timestampIndex = parts.findIndex((p) =>
+              /^\d{4}-\d{2}-\d{2}/.test(p),
+            );
+            const id =
+              timestampIndex > 0
+                ? parts.slice(0, timestampIndex).join('_')
+                : nameWithoutExt;
+
             // Default entry
             let entry: JournalIndexEntry = {
               id,
@@ -232,16 +223,20 @@ export class JournalStorage {
               createdAt: stat.birthtime.toISOString(),
               duration: 0,
               eventCount: 0,
-              playerIds: []
+              playerIds: [],
             };
 
             // Try to read metadata from file for accurate info
             try {
               const data = await fs.readFile(filePath);
-              const jsonStr = compressed ? (await gunzip(data)).toString('utf-8') : data.toString('utf-8');
+              const jsonStr = compressed
+                ? (await gunzip(data)).toString('utf-8')
+                : data.toString('utf-8');
               const parsed = JSON.parse(jsonStr);
               if (parsed && parsed.metadata) {
-                const md = parsed.metadata as JournalMetadata & { createdAt: string };
+                const md = parsed.metadata as JournalMetadata & {
+                  createdAt: string;
+                };
                 entry = {
                   id: md.id, // Use the actual ID from metadata
                   filePath,
@@ -300,10 +295,14 @@ export class JournalStorage {
   /**
    * Clean up old journals based on age or count
    */
-  async cleanup(options: { maxAge?: number; maxCount?: number }): Promise<number> {
+  async cleanup(options: {
+    maxAge?: number;
+    maxCount?: number;
+  }): Promise<number> {
     const entries = await this.list();
-    entries.sort((a, b) =>
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    entries.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
     let deleted = 0;
@@ -349,7 +348,7 @@ export class JournalStorage {
   private async saveStreaming(
     journal: EventJournal,
     filePath: string,
-    batchSize: number = 1000
+    batchSize: number = 1000,
   ): Promise<string> {
     // Ensure parent directory exists
     await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -427,7 +426,10 @@ export class JournalStorage {
   /**
    * Find a journal file by ID
    */
-  private async findJournalFile(journalId: string, subdir: string): Promise<string | null> {
+  private async findJournalFile(
+    journalId: string,
+    subdir: string,
+  ): Promise<string | null> {
     const dirPath = path.join(this.config.baseDir, subdir);
     try {
       const files = await fs.readdir(dirPath);
@@ -451,7 +453,7 @@ export class JournalStorage {
       const data = await fs.readFile(indexPath, 'utf-8');
       const entries = JSON.parse(data) as JournalIndexEntry[];
       this.indexCache.clear();
-      entries.forEach(entry => this.indexCache.set(entry.id, entry));
+      entries.forEach((entry) => this.indexCache.set(entry.id, entry));
     } catch {
       // Index doesn't exist yet
     }
@@ -472,7 +474,7 @@ export class JournalStorage {
   private async updateIndex(
     metadata: JournalMetadata,
     filePath: string,
-    fileSizeBytes: number
+    fileSizeBytes: number,
   ): Promise<void> {
     const entry: JournalIndexEntry = {
       id: metadata.id,
@@ -483,7 +485,7 @@ export class JournalStorage {
       playerIds: metadata.playerIds,
       filePath,
       compressed: this.config.compress,
-      fileSize: fileSizeBytes
+      fileSize: fileSizeBytes,
     };
 
     this.indexCache.set(metadata.id, entry);
@@ -506,20 +508,23 @@ export class JournalStorage {
       return {
         totalJournals: 0,
         totalSize: 0,
-        averageEventCount: 0
+        averageEventCount: 0,
       };
     }
 
     const totalSize = entries.reduce((sum, e) => sum + e.fileSize, 0);
-    const dates = entries.map(e => new Date(e.createdAt)).sort((a, b) => a.getTime() - b.getTime());
-    const avgEvents = entries.reduce((sum, e) => sum + e.eventCount, 0) / entries.length;
+    const dates = entries
+      .map((e) => new Date(e.createdAt))
+      .sort((a, b) => a.getTime() - b.getTime());
+    const avgEvents =
+      entries.reduce((sum, e) => sum + e.eventCount, 0) / entries.length;
 
     return {
       totalJournals: entries.length,
       totalSize,
       oldestJournal: dates[0],
       newestJournal: dates[dates.length - 1],
-      averageEventCount: Math.round(avgEvents)
+      averageEventCount: Math.round(avgEvents),
     };
   }
 }

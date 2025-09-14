@@ -1,29 +1,29 @@
-import { TPickupCollectedEvent } from "../../core/types/events.type";
-import { BaseEvent } from "../abstract";
+import { TPickupCollectedEvent } from '../../core/types/events.type';
+import { BaseEvent } from '../abstract';
 
 export class PickupCollectedEvent extends BaseEvent<TPickupCollectedEvent> {
   protected readonly type = 'pickup:collected' as const;
-  
+
   constructor(
     private readonly id: string,
-    private readonly by: string
-  ) { 
-    super(); 
+    private readonly by: string,
+  ) {
+    super();
   }
 
   toEmit(): TPickupCollectedEvent {
-    return { 
-      type: this.type, 
+    return {
+      type: this.type,
       id: this.id,
-      by: this.by
+      by: this.by,
     };
   }
 
   toString(): string {
-    return JSON.stringify({ 
-      type: this.type, 
+    return JSON.stringify({
+      type: this.type,
       id: this.id,
-      by: this.by
+      by: this.by,
     });
   }
 }

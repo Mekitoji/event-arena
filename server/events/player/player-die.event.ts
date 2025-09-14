@@ -1,9 +1,11 @@
-import { TPlayerDieEvent } from "../../core/types/events.type";
-import { BaseEvent } from "../abstract";
+import { TPlayerDieEvent } from '../../core/types/events.type';
+import { BaseEvent } from '../abstract';
 
 export class PlayerDiedEvent extends BaseEvent<TPlayerDieEvent> {
   protected readonly type = 'player:die';
-  constructor(private readonly playerId: string) { super() }
+  constructor(private readonly playerId: string) {
+    super();
+  }
 
   toEmit(): TPlayerDieEvent {
     return { type: this.type, playerId: this.playerId };
@@ -13,4 +15,3 @@ export class PlayerDiedEvent extends BaseEvent<TPlayerDieEvent> {
     return JSON.stringify({ type: this.type, playerId: this.playerId });
   }
 }
-

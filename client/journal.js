@@ -17,8 +17,10 @@ async function getJournal(id) {
 
 function fmtBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`;
-  const kb = bytes / 1024; if (kb < 1024) return `${kb.toFixed(1)} KB`;
-  const mb = kb / 1024; return `${mb.toFixed(1)} MB`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  const mb = kb / 1024;
+  return `${mb.toFixed(1)} MB`;
 }
 
 function renderRows(items) {
@@ -27,7 +29,8 @@ function renderRows(items) {
     const tr = document.createElement('tr');
     // Show the journal type more clearly
     const journalType = it.id.startsWith('match_') ? 'match' : 'session';
-    const displayId = it.id.length > 40 ? it.id.substring(0, 40) + '...' : it.id;
+    const displayId =
+      it.id.length > 40 ? it.id.substring(0, 40) + '...' : it.id;
 
     // Extract just the match ID from journals that have one
     let matchDisplay = '';
@@ -50,7 +53,7 @@ function renderRows(items) {
     tbody.appendChild(tr);
   }
 
-  tbody.querySelectorAll('button[data-id]').forEach(btn => {
+  tbody.querySelectorAll('button[data-id]').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const id = btn.getAttribute('data-id');
       btn.disabled = true;
@@ -64,7 +67,11 @@ function renderRows(items) {
           <div><strong>Events:</strong> ${metadata.eventCount}</div>
           <div><strong>Players:</strong> ${(metadata.playerIds || []).join(', ')}</div>
         `;
-        pre.textContent = JSON.stringify({ metadata, sample: entries.slice(0, 25) }, null, 2);
+        pre.textContent = JSON.stringify(
+          { metadata, sample: entries.slice(0, 25) },
+          null,
+          2,
+        );
       } catch (e) {
         alert(String(e));
       } finally {
@@ -80,10 +87,15 @@ async function refresh() {
     let items = await listJournals();
     const matchId = $('#matchId').value.trim();
     const playerId = $('#playerId').value.trim();
-    if (matchId) items = items.filter(it => it.matchId === matchId);
-    if (playerId) items = items.filter(it => (it.playerIds || []).includes(playerId));
+    if (matchId) items = items.filter((it) => it.matchId === matchId);
+    if (playerId) {
+      items = items.filter((it) => (it.playerIds || []).includes(playerId));
+    }
     // newest first
-    items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    items.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
     renderRows(items);
   } catch (e) {
     alert(String(e));
@@ -94,4 +106,3 @@ async function refresh() {
 
 $('#refresh').addEventListener('click', refresh);
 refresh().catch(console.error);
-

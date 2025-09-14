@@ -3,7 +3,9 @@ import { IEffect, EffectType, EffectData, EffectJSON } from './types';
 /**
  * Base implementation of the IEffect interface
  */
-export abstract class BaseEffect<T extends EffectData = EffectData> implements IEffect<T> {
+export abstract class BaseEffect<T extends EffectData = EffectData>
+  implements IEffect<T>
+{
   public readonly id: string;
   public readonly type: EffectType;
   public readonly startTime: number;
@@ -15,7 +17,7 @@ export abstract class BaseEffect<T extends EffectData = EffectData> implements I
     type: EffectType,
     startTime: number,
     duration: number,
-    data: T
+    data: T,
   ) {
     this.id = id;
     this.type = type;
@@ -110,7 +112,7 @@ export abstract class BaseEffect<T extends EffectData = EffectData> implements I
       duration: this.duration,
       data: this.data,
       progress: this.getProgress(currentTime),
-      remainingDuration: this.getRemainingDuration(currentTime)
+      remainingDuration: this.getRemainingDuration(currentTime),
     };
   }
 

@@ -36,10 +36,10 @@ Config.saveToFile();
 // ===========================================
 
 // Export commonly used getters for easier access
-export const getProjectileConfig = (type: 'bullet' | 'pellet' | 'rocket') => 
+export const getProjectileConfig = (type: 'bullet' | 'pellet' | 'rocket') =>
   Config.getProjectileConfig(type);
 
-export const getCooldown = (weapon: 'shoot' | 'shotgun' | 'rocket' | 'dash') => 
+export const getCooldown = (weapon: 'shoot' | 'shotgun' | 'rocket' | 'dash') =>
   Config.getCooldown(weapon);
 
 export const getExplosionRadius = () => Config.getExplosionRadius();

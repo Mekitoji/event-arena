@@ -1,7 +1,7 @@
-import { eventBus } from "../core/event-bus";
-import { TDamageAppliedEvent } from "../core/types/events.type";
-import { World } from "../core/world";
-import { Config } from "../config";
+import { eventBus } from '../core/event-bus';
+import { TDamageAppliedEvent } from '../core/types/events.type';
+import { World } from '../core/world';
+import { Config } from '../config';
 import {
   DamageAppliedEvent,
   ProjectileDespawnedEvent,
@@ -11,15 +11,22 @@ import {
   PlayerKillEvent,
   PlayerDiedEvent,
   FeedEntryEvent,
-  ScoreUpdateEvent
-} from "../events";
-import { eventBus as bus } from "../core/event-bus";
+  ScoreUpdateEvent,
+} from '../events';
+import { eventBus as bus } from '../core/event-bus';
 
 // Track recent damage for assist calculation (player -> damages)
-const recentDamage = new Map<string, Array<{ source: string; timestamp: number; amount: number; weapon?: 'bullet' | 'pellet' | 'rocket' | 'explosion' }>>();
+const recentDamage = new Map<
+  string,
+  Array<{
+    source: string;
+    timestamp: number;
+    amount: number;
+    weapon?: 'bullet' | 'pellet' | 'rocket' | 'explosion';
+  }>
+>();
 
 eventBus.on('tick:post', () => {
-
   for (const pr of [...World.projectiles.values()]) {
     for (const p of World.players.values()) {
       if (p.id === pr.owner || p.isDeadPlayer()) continue; // Skip dead players
@@ -28,7 +35,7 @@ eventBus.on('tick:post', () => {
       if (pr.isWithinHitRadius(p.pos)) {
         // Remove projectile
         World.projectiles.delete(pr.id);
-        eventBus.emit(new ProjectileDespawnedEvent(pr.id).toEmit())
+        eventBus.emit(new ProjectileDespawnedEvent(pr.id).toEmit());
 
         if (pr.shouldExplodeOnCollision()) {
           // Explosion AoE
@@ -36,26 +43,48 @@ eventBus.on('tick:post', () => {
           const radius = Config.getExplosionRadius();
           const damage = Config.getExplosionDamage();
           const knockbackPerDamage = Config.getKnockbackPower();
-          eventBus.emit(new ExplosionSpawnedEvent(pos, radius, damage).toEmit());
+          eventBus.emit(
+            new ExplosionSpawnedEvent(pos, radius, damage).toEmit(),
+          );
           for (const t of World.players.values()) {
             if (t.isDeadPlayer()) continue; // Skip dead players for explosion damage
             const dist = Math.hypot(t.pos.x - pos.x, t.pos.y - pos.y);
             if (dist <= radius) {
-              eventBus.emit(new DamageAppliedEvent(t.id, damage, pr.owner, 'explosion').toEmit())
+              eventBus.emit(
+                new DamageAppliedEvent(
+                  t.id,
+                  damage,
+                  pr.owner,
+                  'explosion',
+                ).toEmit(),
+              );
               // Knockback vector from explosion center
               const nx = dist ? (t.pos.x - pos.x) / dist : 0;
               const ny = dist ? (t.pos.y - pos.y) / dist : 0;
               const power = damage * knockbackPerDamage;
               // Use Player class method for knockback
-              t.applyKnockback(nx * power, ny * power, Config.combat.knockbackDuration);
-              eventBus.emit(new KnockbackAppliedEvent(t.id, { x: nx, y: ny }, power, pr.owner).toEmit());
+              t.applyKnockback(
+                nx * power,
+                ny * power,
+                Config.combat.knockbackDuration,
+              );
+              eventBus.emit(
+                new KnockbackAppliedEvent(
+                  t.id,
+                  { x: nx, y: ny },
+                  power,
+                  pr.owner,
+                ).toEmit(),
+              );
             }
           }
         } else {
           // bullet/pellet damage to the hit player using projectile's current damage
           const dmg = pr.getCurrentDamage(); // This accounts for damage reduction from bounces
           const weaponType = pr.kind === 'pellet' ? 'pellet' : 'bullet';
-          eventBus.emit(new DamageAppliedEvent(p.id, dmg, pr.owner, weaponType).toEmit())
+          eventBus.emit(
+            new DamageAppliedEvent(p.id, dmg, pr.owner, weaponType).toEmit(),
+          );
 
           // Record shot hit for accuracy tracking
           const shooter = World.players.get(pr.owner);
@@ -69,7 +98,8 @@ eventBus.on('tick:post', () => {
 });
 
 eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
-  const t = World.players.get(e.targetId); if (!t) return;
+  const t = World.players.get(e.targetId);
+  if (!t) return;
   // ignore damage if target is dead or has i-frames
   if (t.isDeadPlayer() || t.hasIframes()) return;
 
@@ -86,10 +116,17 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
       recentDamage.set(e.targetId, []);
     }
     const damageHistory = recentDamage.get(e.targetId)!;
-    damageHistory.push({ source: e.source, timestamp: now, amount: dmg, weapon: e.weapon });
+    damageHistory.push({
+      source: e.source,
+      timestamp: now,
+      amount: dmg,
+      weapon: e.weapon,
+    });
 
     // Clean up old damage entries (keep only recent ones)
-    const validDamage = damageHistory.filter(d => now - d.timestamp <= Config.combat.assistTimeWindow);
+    const validDamage = damageHistory.filter(
+      (d) => now - d.timestamp <= Config.combat.assistTimeWindow,
+    );
     recentDamage.set(e.targetId, validDamage);
   }
 
@@ -100,10 +137,22 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
       const dx = t.pos.x - s.pos.x;
       const dy = t.pos.y - s.pos.y;
       const dist = Math.hypot(dx, dy) || 1;
-      const nx = dx / dist, ny = dy / dist;
+      const nx = dx / dist,
+        ny = dy / dist;
       const power = e.amount * Config.getKnockbackPower();
-      t.kb = { vx: nx * power, vy: ny * power, until: Date.now() + Config.combat.knockbackDuration };
-      eventBus.emit(new KnockbackAppliedEvent(t.id, { x: nx, y: ny }, power, e.source).toEmit());
+      t.kb = {
+        vx: nx * power,
+        vy: ny * power,
+        until: Date.now() + Config.combat.knockbackDuration,
+      };
+      eventBus.emit(
+        new KnockbackAppliedEvent(
+          t.id,
+          { x: nx, y: ny },
+          power,
+          e.source,
+        ).toEmit(),
+      );
     }
   }
 
@@ -118,7 +167,9 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
       // Get recent damage to calculate assists
       const damageHistory = recentDamage.get(e.targetId) || [];
       const now = Date.now();
-    const validDamage = damageHistory.filter(d => now - d.timestamp <= Config.combat.assistTimeWindow);
+      const validDamage = damageHistory.filter(
+        (d) => now - d.timestamp <= Config.combat.assistTimeWindow,
+      );
 
       // Find killer and assists
       const assistIds: string[] = [];
@@ -135,7 +186,13 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
         killer.addKill();
 
         // Emit streak change event
-        eventBus.emit(new StreakChangedEvent(e.source, killer.getCurrentStreak(), previousStreak).toEmit());
+        eventBus.emit(
+          new StreakChangedEvent(
+            e.source,
+            killer.getCurrentStreak(),
+            previousStreak,
+          ).toEmit(),
+        );
 
         // Find assists (players who damaged victim but didn't get the kill)
         const assistSources = new Set<string>();
@@ -155,26 +212,60 @@ eventBus.on('damage:applied', (e: TDamageAppliedEvent) => {
         }
 
         // Emit kill event
-        eventBus.emit(new PlayerKillEvent(e.source, e.targetId, assistIds.length > 0 ? assistIds : undefined).toEmit());
+        eventBus.emit(
+          new PlayerKillEvent(
+            e.source,
+            e.targetId,
+            assistIds.length > 0 ? assistIds : undefined,
+          ).toEmit(),
+        );
 
         // Emit kill feed event
-        eventBus.emit(new FeedEntryEvent(e.source, e.targetId, weaponType, assistIds.length > 0 ? assistIds : undefined).toEmit());
+        eventBus.emit(
+          new FeedEntryEvent(
+            e.source,
+            e.targetId,
+            weaponType,
+            assistIds.length > 0 ? assistIds : undefined,
+          ).toEmit(),
+        );
 
         // Emit score updates for all affected players
         const killerStats = killer.stats;
-        eventBus.emit(new ScoreUpdateEvent(e.source, killerStats.kills, killerStats.deaths, killerStats.assists).toEmit());
+        eventBus.emit(
+          new ScoreUpdateEvent(
+            e.source,
+            killerStats.kills,
+            killerStats.deaths,
+            killerStats.assists,
+          ).toEmit(),
+        );
         for (const assistId of assistIds) {
           const assistPlayer = World.players.get(assistId);
           if (assistPlayer) {
             const assistStats = assistPlayer.stats;
-            eventBus.emit(new ScoreUpdateEvent(assistId, assistStats.kills, assistStats.deaths, assistStats.assists).toEmit());
+            eventBus.emit(
+              new ScoreUpdateEvent(
+                assistId,
+                assistStats.kills,
+                assistStats.deaths,
+                assistStats.assists,
+              ).toEmit(),
+            );
           }
         }
       }
 
       // Emit victim's score update
       const victimStats = victim.stats;
-      eventBus.emit(new ScoreUpdateEvent(e.targetId, victimStats.kills, victimStats.deaths, victimStats.assists).toEmit());
+      eventBus.emit(
+        new ScoreUpdateEvent(
+          e.targetId,
+          victimStats.kills,
+          victimStats.deaths,
+          victimStats.assists,
+        ).toEmit(),
+      );
     }
 
     // Mark player as dead instead of deleting

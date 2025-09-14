@@ -1,4 +1,4 @@
-import { Vec2 } from "../../core/types/vec2.type";
+import { Vec2 } from '../../core/types/vec2.type';
 import { BaseEffect } from './base-effect';
 import { EffectType } from './types';
 import {
@@ -12,21 +12,20 @@ import {
   HealPulseEffect,
   ShieldGlowEffect,
   HasteTrailEffect,
-  InvulnerabilityEffect
+  InvulnerabilityEffect,
 } from './effects';
 
 /**
  * Factory class for creating common game effects
  */
 export class EffectFactory {
-  
   /**
    * Create a damage flash effect
    */
   public static createDamageFlash(
-    playerId: string, 
-    damage: number, 
-    flashColor: string = '#ff0000'
+    playerId: string,
+    damage: number,
+    flashColor: string = '#ff0000',
   ): DamageFlashEffect {
     const id = BaseEffect.generateId(EffectType.DAMAGE_FLASH, playerId);
     return new DamageFlashEffect(id, Date.now(), damage, flashColor);
@@ -39,7 +38,7 @@ export class EffectFactory {
     playerId: string,
     position: Vec2,
     maxRadius: number = 26,
-    ringColor: string = '#000000'
+    ringColor: string = '#000000',
   ): DeathRingEffect {
     const id = BaseEffect.generateId(EffectType.DEATH_RING, playerId);
     return new DeathRingEffect(id, Date.now(), position, maxRadius, ringColor);
@@ -51,7 +50,7 @@ export class EffectFactory {
   public static createDashTrail(
     playerId: string,
     duration: number,
-    trailColor: string = '#9696ff'
+    trailColor: string = '#9696ff',
   ): DashTrailEffect {
     const id = BaseEffect.generateId(EffectType.DASH_TRAIL, playerId);
     return new DashTrailEffect(id, Date.now(), duration, trailColor);
@@ -65,10 +64,20 @@ export class EffectFactory {
     position: Vec2,
     radius: number,
     damage: number,
-    explosionColor: string = '#ff7800'
+    explosionColor: string = '#ff7800',
   ): ExplosionEffect {
-    const id = BaseEffect.generateId(EffectType.EXPLOSION, playerId || undefined);
-    return new ExplosionEffect(id, Date.now(), position, radius, damage, explosionColor);
+    const id = BaseEffect.generateId(
+      EffectType.EXPLOSION,
+      playerId || undefined,
+    );
+    return new ExplosionEffect(
+      id,
+      Date.now(),
+      position,
+      radius,
+      damage,
+      explosionColor,
+    );
   }
 
   /**
@@ -77,7 +86,7 @@ export class EffectFactory {
   public static createSpark(
     position: Vec2,
     direction: Vec2,
-    sparkColor: string = '#ffc864'
+    sparkColor: string = '#ffc864',
   ): SparkEffect {
     const id = BaseEffect.generateId(EffectType.SPARK);
     return new SparkEffect(id, Date.now(), position, direction, sparkColor);
@@ -89,7 +98,7 @@ export class EffectFactory {
   public static createKnockback(
     playerId: string,
     velocity: Vec2,
-    power: number
+    power: number,
   ): KnockbackEffect {
     const id = BaseEffect.generateId(EffectType.KNOCKBACK, playerId);
     return new KnockbackEffect(id, Date.now(), velocity, power);
@@ -102,10 +111,16 @@ export class EffectFactory {
     playerId: string,
     amplitude: number,
     frequency: number = 30,
-    duration: number = 120
+    duration: number = 120,
   ): CameraShakeEffect {
     const id = BaseEffect.generateId(EffectType.CAMERA_SHAKE, playerId);
-    return new CameraShakeEffect(id, Date.now(), amplitude, frequency, duration);
+    return new CameraShakeEffect(
+      id,
+      Date.now(),
+      amplitude,
+      frequency,
+      duration,
+    );
   }
 
   /**
@@ -114,7 +129,7 @@ export class EffectFactory {
   public static createHealPulse(
     playerId: string,
     healAmount: number,
-    pulseColor: string = '#00ff00'
+    pulseColor: string = '#00ff00',
   ): HealPulseEffect {
     const id = BaseEffect.generateId(EffectType.HEAL_PULSE, playerId);
     return new HealPulseEffect(id, Date.now(), healAmount, pulseColor);
@@ -126,7 +141,7 @@ export class EffectFactory {
   public static createShieldGlow(
     playerId: string,
     duration: number,
-    glowColor: string = '#ffff88'
+    glowColor: string = '#ffff88',
   ): ShieldGlowEffect {
     const id = BaseEffect.generateId(EffectType.SHIELD_GLOW, playerId);
     return new ShieldGlowEffect(id, Date.now(), duration, glowColor);
@@ -139,10 +154,16 @@ export class EffectFactory {
     playerId: string,
     duration: number,
     speedMultiplier: number,
-    trailColor: string = '#00ffff'
+    trailColor: string = '#00ffff',
   ): HasteTrailEffect {
     const id = BaseEffect.generateId(EffectType.HASTE_TRAIL, playerId);
-    return new HasteTrailEffect(id, Date.now(), duration, speedMultiplier, trailColor);
+    return new HasteTrailEffect(
+      id,
+      Date.now(),
+      duration,
+      speedMultiplier,
+      trailColor,
+    );
   }
 
   /**
@@ -151,7 +172,7 @@ export class EffectFactory {
   public static createInvulnerability(
     playerId: string,
     duration: number,
-    flickerRate: number = 8
+    flickerRate: number = 8,
   ): InvulnerabilityEffect {
     const id = BaseEffect.generateId(EffectType.INVULNERABILITY, playerId);
     return new InvulnerabilityEffect(id, Date.now(), duration, flickerRate);
@@ -163,7 +184,7 @@ export class EffectFactory {
   public static createScaledDamageFlash(
     playerId: string,
     damage: number,
-    weaponType: 'bullet' | 'pellet' | 'rocket' | 'explosion' = 'bullet'
+    weaponType: 'bullet' | 'pellet' | 'rocket' | 'explosion' = 'bullet',
   ): DamageFlashEffect {
     let color = '#ff0000';
     let scaleFactor = 1.0;
@@ -188,8 +209,13 @@ export class EffectFactory {
     }
 
     const id = BaseEffect.generateId(EffectType.DAMAGE_FLASH, playerId);
-    const effect = new DamageFlashEffect(id, Date.now(), damage * scaleFactor, color);
-    
+    const effect = new DamageFlashEffect(
+      id,
+      Date.now(),
+      damage * scaleFactor,
+      color,
+    );
+
     return effect;
   }
 
@@ -199,7 +225,7 @@ export class EffectFactory {
   public static createWeaponExplosion(
     playerId: string | null,
     position: Vec2,
-    weaponType: 'rocket' | 'grenade' | 'bomb' = 'rocket'
+    weaponType: 'rocket' | 'grenade' | 'bomb' = 'rocket',
   ): ExplosionEffect {
     let radius = 50;
     let damage = 40;
@@ -223,7 +249,10 @@ export class EffectFactory {
         break;
     }
 
-    const id = BaseEffect.generateId(EffectType.EXPLOSION, playerId || undefined);
+    const id = BaseEffect.generateId(
+      EffectType.EXPLOSION,
+      playerId || undefined,
+    );
     return new ExplosionEffect(id, Date.now(), position, radius, damage, color);
   }
 
@@ -233,7 +262,7 @@ export class EffectFactory {
   public static createWeaponKnockback(
     playerId: string,
     direction: Vec2,
-    weaponType: 'bullet' | 'pellet' | 'rocket' | 'explosion' = 'bullet'
+    weaponType: 'bullet' | 'pellet' | 'rocket' | 'explosion' = 'bullet',
   ): KnockbackEffect {
     let power = 1.0;
 
@@ -254,7 +283,7 @@ export class EffectFactory {
 
     const velocity: Vec2 = {
       x: direction.x * power,
-      y: direction.y * power
+      y: direction.y * power,
     };
 
     const id = BaseEffect.generateId(EffectType.KNOCKBACK, playerId);
@@ -266,14 +295,20 @@ export class EffectFactory {
    */
   public static createImpactShake(
     playerId: string,
-    impactPower: number
+    impactPower: number,
   ): CameraShakeEffect {
     const amplitude = Math.min(5, Math.max(1, impactPower));
     const frequency = 25 + impactPower * 5;
     const duration = Math.min(200, 80 + impactPower * 20);
 
     const id = BaseEffect.generateId(EffectType.CAMERA_SHAKE, playerId);
-    return new CameraShakeEffect(id, Date.now(), amplitude, frequency, duration);
+    return new CameraShakeEffect(
+      id,
+      Date.now(),
+      amplitude,
+      frequency,
+      duration,
+    );
   }
 }
 
@@ -281,7 +316,6 @@ export class EffectFactory {
  * Convenience functions for common effect combinations
  */
 export class EffectCombinations {
-  
   /**
    * Create all effects for taking damage
    */
@@ -289,17 +323,25 @@ export class EffectCombinations {
     playerId: string,
     damage: number,
     weaponType: 'bullet' | 'pellet' | 'rocket' | 'explosion' = 'bullet',
-    knockbackDirection?: Vec2
+    knockbackDirection?: Vec2,
   ): BaseEffect[] {
     const effects: BaseEffect[] = [];
 
     // Always add damage flash
-    effects.push(EffectFactory.createScaledDamageFlash(playerId, damage, weaponType));
+    effects.push(
+      EffectFactory.createScaledDamageFlash(playerId, damage, weaponType),
+    );
 
     // Add knockback if direction provided
     if (knockbackDirection) {
-      effects.push(EffectFactory.createWeaponKnockback(playerId, knockbackDirection, weaponType));
-      
+      effects.push(
+        EffectFactory.createWeaponKnockback(
+          playerId,
+          knockbackDirection,
+          weaponType,
+        ),
+      );
+
       // Add camera shake for significant damage
       if (damage > 15) {
         effects.push(EffectFactory.createImpactShake(playerId, damage / 10));
@@ -314,13 +356,13 @@ export class EffectCombinations {
    */
   public static createDeathEffects(
     playerId: string,
-    position: Vec2
+    position: Vec2,
   ): BaseEffect[] {
     const effects: BaseEffect[] = [];
 
     // Death ring
     effects.push(EffectFactory.createDeathRing(playerId, position));
-    
+
     // Camera shake for the dying player
     effects.push(EffectFactory.createImpactShake(playerId, 3));
 
@@ -332,13 +374,13 @@ export class EffectCombinations {
    */
   public static createDashEffects(
     playerId: string,
-    duration: number
+    duration: number,
   ): BaseEffect[] {
     const effects: BaseEffect[] = [];
 
     // Dash trail
     effects.push(EffectFactory.createDashTrail(playerId, duration));
-    
+
     // Invulnerability flicker if player has iframes
     effects.push(EffectFactory.createInvulnerability(playerId, duration));
 
@@ -351,7 +393,7 @@ export class EffectCombinations {
   public static createBuffEffects(
     playerId: string,
     buffType: 'heal' | 'haste' | 'shield',
-    duration: number
+    duration: number,
   ): BaseEffect[] {
     const effects: BaseEffect[] = [];
 

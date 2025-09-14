@@ -1,15 +1,21 @@
-import { Vec2 } from "./types/vec2.type";
-import { Player } from "../entities/player";
-import { Projectile } from "../entities/projectile";
+import { Vec2 } from './types/vec2.type';
+import { Player } from '../entities/player';
+import { Projectile } from '../entities/projectile';
 
 export type EntityId = string;
 
-type Pickup = { id: string, pos: Vec2, kind: 'heal' | 'haste' | 'shield' };
+type Pickup = { id: string; pos: Vec2; kind: 'heal' | 'haste' | 'shield' };
 
 export const DEFAULT_WIDTH = 2000;
 export const DEFAULT_HEIGH = 1200;
 
-type MapObstacleRect = { type: 'rect', x: number, y: number, w: number, h: number };
+type MapObstacleRect = {
+  type: 'rect';
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
 // Future: type MapObstacleSeg = { type: 'seg', x1:number,y1:number,x2:number,y2:number };
 
 export const World = {
@@ -25,4 +31,4 @@ export const World = {
       { type: 'rect', x: 300, y: 800, w: 180, h: 140 } as MapObstacleRect,
     ],
   },
-}
+};

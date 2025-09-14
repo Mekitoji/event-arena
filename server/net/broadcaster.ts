@@ -1,35 +1,35 @@
-import { WebSocketServer } from "ws";
-import type WebSocket from "ws";
-import { SourceEventType, THudUpdate } from "../core/types/events.type";
-import { eventBus } from "../core/event-bus";
-import { TEvent } from "../core/types";
+import { WebSocketServer } from 'ws';
+import type WebSocket from 'ws';
+import { SourceEventType, THudUpdate } from '../core/types/events.type';
+import { eventBus } from '../core/event-bus';
+import { TEvent } from '../core/types';
 
 const SOURCE_EVENT_TYPES = [
-  "player:join",
-  "player:move",
-  "player:aimed",
-  "player:die",
-  "player:kill",
-  "player:leave",
-  "projectile:spawned",
-  "projectile:moved",
-  "projectile:despawned",
-  "projectile:bounced",
-  "damage:applied",
-  "explosion:spawned",
-  "knockback:applied",
-  "dash:started",
-  "dash:ended",
-  "pickup:spawned",
-  "pickup:collected",
-  "buff:applied",
-  "buff:expired",
-  "match:created",
-  "match:started",
-  "match:ended",
-  "score:update",
-  "feed:entry",
-  "streak:changed",
+  'player:join',
+  'player:move',
+  'player:aimed',
+  'player:die',
+  'player:kill',
+  'player:leave',
+  'projectile:spawned',
+  'projectile:moved',
+  'projectile:despawned',
+  'projectile:bounced',
+  'damage:applied',
+  'explosion:spawned',
+  'knockback:applied',
+  'dash:started',
+  'dash:ended',
+  'pickup:spawned',
+  'pickup:collected',
+  'buff:applied',
+  'buff:expired',
+  'match:created',
+  'match:started',
+  'match:ended',
+  'score:update',
+  'feed:entry',
+  'streak:changed',
 ] as const satisfies readonly SourceEventType[];
 
 const broadcastTypes = new Set(...[SOURCE_EVENT_TYPES]);
@@ -41,15 +41,17 @@ const hudSubs: WeakMap<WebSocket, Set<string>> = new WeakMap();
 
 export function hudSubscribe(ws: WebSocket, widgets: string[]) {
   const set = hudSubs.get(ws) ?? new Set<string>();
-  widgets.forEach(w => set.add(w));
+  widgets.forEach((w) => set.add(w));
   hudSubs.set(ws, set);
 }
 export function hudUnsubscribe(ws: WebSocket, widgets: string[]) {
   const set = hudSubs.get(ws);
   if (!set) return;
-  widgets.forEach(w => set.delete(w));
+  widgets.forEach((w) => set.delete(w));
 }
-export function hudClear(ws: WebSocket) { hudSubs.delete(ws); }
+export function hudClear(ws: WebSocket) {
+  hudSubs.delete(ws);
+}
 
 export function sendToHudSubscribers(widgetKey: string, message: THudUpdate) {
   if (!_wss) return;
@@ -58,7 +60,9 @@ export function sendToHudSubscribers(widgetKey: string, message: THudUpdate) {
     if (client.readyState !== 1 || client.bufferedAmount > 1_000_000) continue;
     const subs = hudSubs.get(client);
     if (subs && subs.has(widgetKey)) {
-      try { client.send(payload); } catch {
+      try {
+        client.send(payload);
+      } catch {
         // ignore send errors for individual clients
       }
     }
@@ -67,7 +71,9 @@ export function sendToHudSubscribers(widgetKey: string, message: THudUpdate) {
 
 export function sendToConnection(ws: WebSocket, message: THudUpdate) {
   if (!ws || ws.readyState !== 1 || ws.bufferedAmount > 1_000_000) return;
-  try { ws.send(JSON.stringify(message)); } catch {
+  try {
+    ws.send(JSON.stringify(message));
+  } catch {
     // ignore send errors for a single connection
   }
 }
@@ -85,7 +91,7 @@ export function attachBroadcaster(wss: WebSocketServer) {
 
         client.send(payload);
       }
-    })
+    });
   }
 }
 

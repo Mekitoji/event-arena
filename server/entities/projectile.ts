@@ -1,4 +1,4 @@
-import { Vec2 } from "../core/types/vec2.type";
+import { Vec2 } from '../core/types/vec2.type';
 
 export type ProjectileKind = 'bullet' | 'pellet' | 'rocket';
 
@@ -125,7 +125,7 @@ export class Projectile {
    * Check if projectile has expired due to lifetime
    */
   public isExpired(currentTime: number = Date.now()): boolean {
-    return (currentTime - this.spawnTime) >= this.lifetime;
+    return currentTime - this.spawnTime >= this.lifetime;
   }
 
   /**
@@ -133,8 +133,10 @@ export class Projectile {
    */
   public isOutOfBounds(worldWidth: number, worldHeight: number): boolean {
     return (
-      this.pos.x < 0 || this.pos.x > worldWidth ||
-      this.pos.y < 0 || this.pos.y > worldHeight
+      this.pos.x < 0 ||
+      this.pos.x > worldWidth ||
+      this.pos.y < 0 ||
+      this.pos.y > worldHeight
     );
   }
 
@@ -170,7 +172,7 @@ export class Projectile {
     }
     return {
       x: this.vel.x / speed,
-      y: this.vel.y / speed
+      y: this.vel.y / speed,
     };
   }
 
@@ -217,7 +219,7 @@ export class Projectile {
       age: this.getAge(currentTime),
       remainingLifetime: this.getRemainingLifetime(currentTime),
       speed: this.getSpeed(),
-      isExpired: this.isExpired(currentTime)
+      isExpired: this.isExpired(currentTime),
     };
   }
 
@@ -234,7 +236,7 @@ export class Projectile {
       hitRadius: this.hitRadius,
       damage: this.damage,
       bounceCount: this.bounceCount,
-      spawnTime: this.spawnTime
+      spawnTime: this.spawnTime,
     };
   }
 
@@ -249,7 +251,7 @@ export class Projectile {
       vel: data.vel,
       kind: data.kind,
       hitRadius: data.hitRadius,
-      damage: data.damage
+      damage: data.damage,
     });
 
     projectile.bounceCount = data.bounceCount;

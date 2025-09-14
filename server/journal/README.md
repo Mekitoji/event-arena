@@ -126,36 +126,36 @@ DISABLE_JOURNAL=true npm run start:server:dev
 ### Programmatic Usage
 
 ```typescript
-import { EventJournal } from "./journal/event-journal";
-import { JournalStorage } from "./journal/journal-storage";
+import { EventJournal } from './journal/event-journal';
+import { JournalStorage } from './journal/journal-storage';
 
 // Create and use a journal
-const journal = new EventJournal("my-journal-001", {
-  matchId: "match-001",
+const journal = new EventJournal('my-journal-001', {
+  matchId: 'match-001',
   maxBufferSize: 5000,
 });
 
 // Record events
 journal.record({
-  type: "player:move",
-  playerId: "player1",
+  type: 'player:move',
+  playerId: 'player1',
   pos: { x: 100, y: 200 },
 });
 
 // Query events
-const playerEvents = journal.getEntriesByPlayer("player1");
-const killEvents = journal.getEntriesByType("player:kill");
+const playerEvents = journal.getEntriesByPlayer('player1');
+const killEvents = journal.getEntriesByType('player:kill');
 
 // Save to disk
 const storage = new JournalStorage({
-  baseDir: "./journals",
+  baseDir: './journals',
   compress: true,
 });
 await storage.init();
 await storage.save(journal);
 
 // Load journal for analysis
-const loaded = await storage.load("my-journal-001");
+const loaded = await storage.load('my-journal-001');
 const stats = loaded.getStats();
 console.log(`Total events: ${stats.totalEvents}`);
 ```

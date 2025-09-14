@@ -1,7 +1,12 @@
 import { eventBus } from '../core/event-bus';
 import { EventJournal } from '../journal/event-journal';
 import { JournalStorage } from '../journal/journal-storage';
-import { SourceEvents, SourceEventType, TMatchCreatedEvent, TMatchEndedEvent } from '../core/types/events.type';
+import {
+  SourceEvents,
+  SourceEventType,
+  TMatchCreatedEvent,
+  TMatchEndedEvent,
+} from '../core/types/events.type';
 import * as crypto from 'node:crypto';
 import * as path from 'node:path';
 
@@ -51,23 +56,26 @@ class JournalSystem {
     this.config = {
       enabled: config.enabled ?? true,
       // Priority: explicit option > JOURNALS_DIR > EVENT_ARENA_ARTIFACTS_DIR/journals > cwd/journals (legacy)
-      storageDir: config.storageDir ?? envJournalsDir ?? path.join(process.cwd(), 'journals'),
+      storageDir:
+        config.storageDir ??
+        envJournalsDir ??
+        path.join(process.cwd(), 'journals'),
       autoSaveInterval: config.autoSaveInterval ?? 30000, // 30 seconds
       excludeEvents: config.excludeEvents ?? ['tick:pre', 'tick:post'], // Exclude tick events by default
       maxJournalSize: config.maxJournalSize ?? 100000, // 100k events
       keepJournals: config.keepJournals ?? 50,
-      debug: config.debug ?? false
+      debug: config.debug ?? false,
     };
 
     this.storage = new JournalStorage({
       baseDir: this.config.storageDir,
       compress: true,
-      createIndex: true
+      createIndex: true,
     });
 
     if (this.config.enabled) {
       // Fire and log failures instead of letting an unhandled rejection crash process
-      this.init().catch(err => {
+      this.init().catch((err) => {
         console.error('[JournalSystem] Initialization failed:', err);
       });
     }
@@ -82,7 +90,7 @@ class JournalSystem {
 
     // Clean up old journals
     await this.storage.cleanup({
-      maxCount: this.config.keepJournals
+      maxCount: this.config.keepJournals,
     });
 
     // Start recording for the current session
@@ -115,13 +123,23 @@ class JournalSystem {
     // List of all event types to subscribe to
     const eventTypes: SourceEventType[] = [
       // Player events
-      'player:join', 'player:move', 'player:aimed', 'player:die', 'player:leave', 'player:kill',
+      'player:join',
+      'player:move',
+      'player:aimed',
+      'player:die',
+      'player:leave',
+      'player:kill',
       // Projectile events
-      'projectile:spawned', 'projectile:moved', 'projectile:despawned', 'projectile:bounced',
+      'projectile:spawned',
+      'projectile:moved',
+      'projectile:despawned',
+      'projectile:bounced',
       // Pickup events
-      'pickup:spawned', 'pickup:collected',
+      'pickup:spawned',
+      'pickup:collected',
       // Buff events
-      'buff:applied', 'buff:expired',
+      'buff:applied',
+      'buff:expired',
       // Damage events
       'damage:applied',
       // Explosion events
@@ -129,28 +147,40 @@ class JournalSystem {
       // Knockback events
       'knockback:applied',
       // Dash events
-      'dash:started', 'dash:ended',
+      'dash:started',
+      'dash:ended',
       // Session events
       'session:started',
       // Map events
       'map:loaded',
       // Match events
-      'match:created', 'match:started', 'match:ended',
+      'match:created',
+      'match:started',
+      'match:ended',
       // Score events
       'score:update',
       // Feed and streak events
-      'feed:entry', 'streak:changed',
+      'feed:entry',
+      'streak:changed',
       // Command events
-      'cmd:move', 'cmd:cast', 'cmd:leave', 'cmd:aim', 'cmd:respawn',
+      'cmd:move',
+      'cmd:cast',
+      'cmd:leave',
+      'cmd:aim',
+      'cmd:respawn',
       // HUD events (optional, might be verbose)
-      'hud:scoreboard:update', 'hud:match:update', 'hud:feed:update',
-      'hud:streaks:update', 'hud:announce:update',
+      'hud:scoreboard:update',
+      'hud:match:update',
+      'hud:feed:update',
+      'hud:streaks:update',
+      'hud:announce:update',
       // Tick events (usually excluded)
-      'tick:pre', 'tick:post'
+      'tick:pre',
+      'tick:post',
     ];
 
     // Subscribe to each event type
-    eventTypes.forEach(eventType => {
+    eventTypes.forEach((eventType) => {
       if (!this.config.excludeEvents.includes(eventType)) {
         eventBus.on(eventType, recordEvent);
       }
@@ -188,7 +218,9 @@ class JournalSystem {
       if (this.config.debug && this.eventCounter % 100 === 0) {
         const elapsed = (Date.now() - this.startTime) / 1000;
         const rate = this.eventCounter / elapsed;
-        console.log(`[JournalSystem] Recorded ${this.eventCounter} events (${rate.toFixed(1)} events/sec)`);
+        console.log(
+          `[JournalSystem] Recorded ${this.eventCounter} events (${rate.toFixed(1)} events/sec)`,
+        );
       }
 
       // Check if we need to rotate the journal
@@ -219,7 +251,11 @@ class JournalSystem {
   /**
    * Handle match ended event
    */
-  private async handleMatchEnded(event: { type: 'match:ended'; id: string;[key: string]: unknown }): Promise<void> {
+  private async handleMatchEnded(event: {
+    type: 'match:ended';
+    id: string;
+    [key: string]: unknown;
+  }): Promise<void> {
     // Record the match end event
     this.recordEvent(event as SourceEvents);
 
@@ -241,7 +277,7 @@ class JournalSystem {
     // Create new journal
     this.currentJournal = new EventJournal(journalId, {
       matchId: matchId || this.currentMatchId || undefined,
-      maxBufferSize: 5000
+      maxBufferSize: 5000,
     });
 
     this.isRecording = true;
@@ -255,7 +291,10 @@ class JournalSystem {
    * Generate a unique journal ID
    */
   private generateJournalId(matchId?: string): string {
-    const timestamp = new Date().toISOString().substring(0, 19).replace(/[:-]/g, '');
+    const timestamp = new Date()
+      .toISOString()
+      .substring(0, 19)
+      .replace(/[:-]/g, '');
     const random = crypto.randomBytes(4).toString('hex');
 
     if (matchId) {
@@ -293,7 +332,9 @@ class JournalSystem {
     this.saving = (async () => {
       try {
         const metadata = journal.getMetadata();
-        console.log(`[JournalSystem] Saving journal ${metadata.id} (${metadata.eventCount} events)`);
+        console.log(
+          `[JournalSystem] Saving journal ${metadata.id} (${metadata.eventCount} events)`,
+        );
 
         await this.storage.save(journal);
 
@@ -375,7 +416,9 @@ class JournalSystem {
     };
   }> {
     const storageStats = await this.storage.getStats();
-    const duration = this.isRecording ? (Date.now() - this.startTime) / 1000 : 0;
+    const duration = this.isRecording
+      ? (Date.now() - this.startTime) / 1000
+      : 0;
     const rate = duration > 0 ? this.eventCounter / duration : 0;
 
     return {
@@ -384,7 +427,7 @@ class JournalSystem {
       currentEventCount: this.eventCounter,
       recordingDuration: duration,
       eventsPerSecond: rate,
-      storageStats
+      storageStats,
     };
   }
 }
@@ -392,7 +435,7 @@ class JournalSystem {
 // Create and export the singleton instance
 export const journalSystem = new JournalSystem({
   enabled: process.env.DISABLE_JOURNAL !== 'true',
-  debug: process.env.DEBUG_JOURNAL === 'true'
+  debug: process.env.DEBUG_JOURNAL === 'true',
 });
 
 // Handle graceful shutdown

@@ -1,10 +1,16 @@
 // Class-based HUD system with widget-specific projections and subscriptions
-import { eventBus } from "../core/event-bus";
-import { sendToConnection, sendToHudSubscribers } from "../net/broadcaster";
-import type { HudWidget, WidgetKey } from "./types";
-import { AnnouncementsWidget, StreaksWidget, FeedWidget, MatchWidget, ScoreboardWidget } from "./widgets";
-import type { SourceEvents, SourceEventType } from "../core/types/events.type";
-import type WebSocket from "ws";
+import { eventBus } from '../core/event-bus';
+import { sendToConnection, sendToHudSubscribers } from '../net/broadcaster';
+import type { HudWidget, WidgetKey } from './types';
+import {
+  AnnouncementsWidget,
+  StreaksWidget,
+  FeedWidget,
+  MatchWidget,
+  ScoreboardWidget,
+} from './widgets';
+import type { SourceEvents, SourceEventType } from '../core/types/events.type';
+import type WebSocket from 'ws';
 
 class HudSystem {
   private widgets: HudWidget[] = [
@@ -19,17 +25,27 @@ class HudSystem {
 
   constructor() {
     const triggers: SourceEventType[] = [
-      'player:join', 'player:leave', 'player:die', 'score:update', 'session:started',
-      'match:created', 'match:started', 'match:ended', 'tick:post',
-      'feed:entry', 'streak:changed',
-      'damage:applied', 'buff:applied'
+      'player:join',
+      'player:leave',
+      'player:die',
+      'score:update',
+      'session:started',
+      'match:created',
+      'match:started',
+      'match:ended',
+      'tick:post',
+      'feed:entry',
+      'streak:changed',
+      'damage:applied',
+      'buff:applied',
     ];
-    for (const t of triggers) eventBus.on(t, (e) => this.onAnyEvent(e as SourceEvents));
+    for (const t of triggers)
+      eventBus.on(t, (e) => this.onAnyEvent(e as SourceEvents));
     setTimeout(() => this.pushAll(), 200);
   }
 
   pushInitialFor(widgetKey: WidgetKey, ws: WebSocket) {
-    const w = this.widgets.find(w => w.key === widgetKey);
+    const w = this.widgets.find((w) => w.key === widgetKey);
     if (!w) return;
     // Send only to this connection to avoid unnecessary broadcasts
     sendToConnection(ws, w.snapshot());
@@ -41,7 +57,7 @@ class HudSystem {
     setTimeout(() => {
       try {
         for (const key of this.dirty) {
-          const w = this.widgets.find(w => w.key === key);
+          const w = this.widgets.find((w) => w.key === key);
           if (w) sendToHudSubscribers(w.key, w.snapshot());
         }
       } finally {
@@ -56,7 +72,8 @@ class HudSystem {
       const changed = w.onEvent(e);
       if (changed) this.dirty.add(w.key);
     }
-    if (e.type === 'feed:entry' || e.type === 'streak:changed') this.scheduleFlush(0);
+    if (e.type === 'feed:entry' || e.type === 'streak:changed')
+      this.scheduleFlush(0);
     else this.scheduleFlush(30);
   }
 
@@ -66,4 +83,3 @@ class HudSystem {
 }
 
 export const hudSystem = new HudSystem();
-

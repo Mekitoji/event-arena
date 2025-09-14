@@ -1,5 +1,12 @@
 import * as path from 'path';
-import { GameConfigSchema, ConfigLoadOptions, ProjectileType, WeaponType, DifficultyLevel, DeepPartial } from './types';
+import {
+  GameConfigSchema,
+  ConfigLoadOptions,
+  ProjectileType,
+  WeaponType,
+  DifficultyLevel,
+  DeepPartial,
+} from './types';
 import { ConfigUtils } from './config-utils';
 import { DEFAULT_CONFIG } from './defaults';
 
@@ -13,7 +20,8 @@ export class GameConfig {
   private isInitialized: boolean = false;
 
   constructor(options?: ConfigLoadOptions) {
-    this.configPath = options?.configPath || path.join(process.cwd(), 'config', 'game.json');
+    this.configPath =
+      options?.configPath || path.join(process.cwd(), 'config', 'game.json');
     this.config = this.loadConfiguration(options);
     this.isInitialized = true;
   }
@@ -28,19 +36,19 @@ export class GameConfig {
   private loadConfiguration(options?: ConfigLoadOptions): GameConfigSchema {
     // Layer 1: Start with defaults
     let config = ConfigUtils.deepClone(DEFAULT_CONFIG);
-    
+
     // Layer 2: Load from JSON file if it exists
     const fileConfig = ConfigUtils.loadFromFile(this.configPath);
     if (fileConfig) {
       config = ConfigUtils.deepMerge(config, fileConfig);
       console.log(`📁 Loaded config overrides from ${this.configPath}`);
     }
-    
+
     // Layer 3: Apply environment variable overrides
     if (options?.allowEnvironmentOverrides !== false) {
       config = ConfigUtils.applyEnvironmentOverrides(config);
     }
-    
+
     // Layer 4: Validate configuration
     if (options?.validateOnLoad !== false) {
       const validation = ConfigUtils.validate(config);
@@ -48,11 +56,11 @@ export class GameConfig {
         console.error('❌ Configuration validation failed:', validation.errors);
         throw new Error('Invalid game configuration');
       }
-      
+
       if (validation.warnings?.length) {
         console.warn('⚠️ Configuration warnings:', validation.warnings);
       }
-      
+
       console.log('✅ Game configuration validated successfully');
     }
 
@@ -63,36 +71,36 @@ export class GameConfig {
   // PUBLIC API - GETTERS
   // ===========================================
 
-  public get world() { 
-    return this.config.world; 
+  public get world() {
+    return this.config.world;
   }
-  
-  public get player() { 
-    return this.config.player; 
+
+  public get player() {
+    return this.config.player;
   }
-  
-  public get projectiles() { 
-    return this.config.projectiles; 
+
+  public get projectiles() {
+    return this.config.projectiles;
   }
-  
-  public get explosions() { 
-    return this.config.explosions; 
+
+  public get explosions() {
+    return this.config.explosions;
   }
-  
-  public get cooldowns() { 
-    return this.config.cooldowns; 
+
+  public get cooldowns() {
+    return this.config.cooldowns;
   }
-  
-  public get buffs() { 
-    return this.config.buffs; 
+
+  public get buffs() {
+    return this.config.buffs;
   }
-  
-  public get combat() { 
-    return this.config.combat; 
+
+  public get combat() {
+    return this.config.combat;
   }
-  
-  public get effects() { 
-    return this.config.effects; 
+
+  public get effects() {
+    return this.config.effects;
   }
 
   // ===========================================
@@ -143,13 +151,13 @@ export class GameConfig {
    */
   public reload(options?: ConfigLoadOptions): void {
     const newConfig = this.loadConfiguration(options);
-    
+
     // Compare configurations for logging
     const differences = ConfigUtils.compareConfigs(this.config, newConfig);
     if (Object.keys(differences).length > 0) {
       console.log('🔄 Configuration changes detected:', differences);
     }
-    
+
     this.config = newConfig;
     console.log('🔄 Configuration reloaded successfully');
   }
@@ -182,15 +190,17 @@ export class GameConfig {
   public update(changes: DeepPartial<GameConfigSchema>): void {
     const oldConfig = ConfigUtils.deepClone(this.config);
     this.config = ConfigUtils.deepMerge(this.config, changes);
-    
+
     // Validate after changes
     const validation = this.validate();
     if (!validation.valid) {
       // Rollback on validation failure
       this.config = oldConfig;
-      throw new Error(`Configuration update failed validation: ${validation.errors.join(', ')}`);
+      throw new Error(
+        `Configuration update failed validation: ${validation.errors.join(', ')}`,
+      );
     }
-    
+
     console.log('🔧 Configuration updated successfully');
   }
 
@@ -202,7 +212,10 @@ export class GameConfig {
    * Create a copy scaled for difficulty level
    */
   public scaleForDifficulty(difficulty: DifficultyLevel): GameConfig {
-    const scaledConfigData = ConfigUtils.scaleForDifficulty(this.config, difficulty);
+    const scaledConfigData = ConfigUtils.scaleForDifficulty(
+      this.config,
+      difficulty,
+    );
     const scaledConfig = new GameConfig({ validateOnLoad: false });
     scaledConfig.config = scaledConfigData;
     return scaledConfig;
@@ -214,8 +227,8 @@ export class GameConfig {
   public clone(overrides?: DeepPartial<GameConfigSchema>): GameConfig {
     const clonedConfig = new GameConfig({ validateOnLoad: false });
     clonedConfig.config = ConfigUtils.deepMerge(
-      ConfigUtils.deepClone(this.config), 
-      overrides || {}
+      ConfigUtils.deepClone(this.config),
+      overrides || {},
     );
     return clonedConfig;
   }
@@ -277,24 +290,31 @@ export class GameConfig {
   /**
    * Create configuration from JSON data
    */
-  static fromJSON(data: GameConfigSchema, options?: ConfigLoadOptions): GameConfig {
+  static fromJSON(
+    data: GameConfigSchema,
+    options?: ConfigLoadOptions,
+  ): GameConfig {
     const config = new GameConfig({ ...options, validateOnLoad: false });
     config.config = data;
-    
+
     if (options?.validateOnLoad !== false) {
       const validation = config.validate();
       if (!validation.valid) {
-        throw new Error(`Invalid configuration: ${validation.errors.join(', ')}`);
+        throw new Error(
+          `Invalid configuration: ${validation.errors.join(', ')}`,
+        );
       }
     }
-    
+
     return config;
   }
 
   /**
    * Create configuration for testing with preset
    */
-  static forTesting(preset: 'fast' | 'powerful' | 'chaos' = 'fast'): GameConfig {
+  static forTesting(
+    preset: 'fast' | 'powerful' | 'chaos' = 'fast',
+  ): GameConfig {
     const config = new GameConfig({ validateOnLoad: false });
     const presetChanges = ConfigUtils.createTestConfig(preset);
     config.config = ConfigUtils.deepMerge(DEFAULT_CONFIG, presetChanges);

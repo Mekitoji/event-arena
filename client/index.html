@@ -1,19 +1,33 @@
 <!doctype html>
 <html lang="en">
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>EventArena</title>
-<link rel="stylesheet" href="./style.css" />
-<canvas id="cv" width="900" height="540"></canvas>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EventArena</title>
+  <link rel="stylesheet" href="./style.css" />
+  <canvas id="cv" width="900" height="540"></canvas>
 
-<!-- Bottom-right sound controls -->
-<div id="sound-ui" class="sound-ui" role="group" aria-label="Sound controls">
-  <button id="btn-mute" class="sound-btn" type="button" aria-pressed="false" aria-label="Mute">
-    <span id="icon-mute" aria-hidden="true">🔊</span>
-  </button>
-  <input id="range-volume" class="sound-range" type="range" min="0" max="100" step="1" aria-label="Volume" />
-  <span id="label-volume" class="sound-label">60%</span>
-</div>
+  <!-- Bottom-right sound controls -->
+  <div id="sound-ui" class="sound-ui" role="group" aria-label="Sound controls">
+    <button
+      id="btn-mute"
+      class="sound-btn"
+      type="button"
+      aria-pressed="false"
+      aria-label="Mute"
+    >
+      <span id="icon-mute" aria-hidden="true">🔊</span>
+    </button>
+    <input
+      id="range-volume"
+      class="sound-range"
+      type="range"
+      min="0"
+      max="100"
+      step="1"
+      aria-label="Volume"
+    />
+    <span id="label-volume" class="sound-label">60%</span>
+  </div>
 
-<script type="module" src="/client.js"></script>
+  <script type="module" src="/client.js"></script>
 </html>

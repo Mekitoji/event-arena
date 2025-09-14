@@ -1,60 +1,5 @@
+import { JournalEntry, JournalMetadata, JournalOptions } from './types';
 import { SourceEvents, SourceEventType } from '../core/types/events.type';
-
-/**
- * Represents a single journal entry with timing and event data
- */
-export interface JournalEntry {
-  /** Unique sequential ID for this entry */
-  id: number;
-  /** Timestamp when the event was recorded (ms since epoch) */
-  timestamp: number;
-  /** Game time when the event occurred (ms since match start) */
-  gameTime: number;
-  /** The event type for quick filtering */
-  eventType: SourceEventType;
-  /** The complete event data */
-  event: SourceEvents;
-  /** Optional metadata for indexing */
-  metadata?: {
-    playerId?: string;
-    matchId?: string;
-    [key: string]: unknown;
-  };
-}
-
-/**
- * Journal metadata for a complete session
- */
-export interface JournalMetadata {
-  /** Unique ID for this journal */
-  id: string;
-  /** When the journal was created */
-  createdAt: Date;
-  /** Match ID if applicable */
-  matchId?: string;
-  /** Duration of the recorded session in ms */
-  duration: number;
-  /** Number of events recorded */
-  eventCount: number;
-  /** List of unique player IDs in this journal */
-  playerIds: string[];
-  /** Map of event type to count */
-  eventTypeCounts: Record<SourceEventType, number>;
-  /** Version for compatibility */
-  version: string;
-}
-
-/**
- * Options for creating a new journal
- */
-export interface JournalOptions {
-  /** Maximum events before auto-flush to storage */
-  maxBufferSize?: number;
-  /** Enable compression for storage */
-  enableCompression?: boolean;
-  /** Match ID to associate with this journal */
-  matchId?: string;
-}
 
 /**
  * EventJournal handles recording and managing game events for replay
@@ -73,7 +18,7 @@ export class EventJournal {
     this.options = {
       maxBufferSize: options.maxBufferSize ?? 10000,
       enableCompression: options.enableCompression ?? true,
-      matchId: options.matchId as string | undefined
+      matchId: options.matchId as string | undefined,
     } as Required<JournalOptions>;
 
     this.metadata = {
@@ -84,7 +29,7 @@ export class EventJournal {
       eventCount: 0,
       playerIds: [],
       eventTypeCounts: {} as Record<SourceEventType, number>,
-      version: '1.0.0'
+      version: '1.0.0',
     };
   }
 
@@ -101,7 +46,7 @@ export class EventJournal {
       gameTime,
       eventType: event.type,
       event,
-      metadata: this.extractMetadata(event)
+      metadata: this.extractMetadata(event),
     };
 
     this.entries.push(entry);
@@ -184,14 +129,18 @@ export class EventJournal {
       this.playerSet.add(entry.metadata.victimId as string);
     }
     if (entry.metadata?.assistIds) {
-      (entry.metadata.assistIds as string[]).forEach(id => this.playerSet.add(id));
+      (entry.metadata.assistIds as string[]).forEach((id) =>
+        this.playerSet.add(id),
+      );
     }
 
     // Update metadata
     this.metadata.eventCount = this.entries.length;
     this.metadata.duration = Date.now() - this.startTime;
     this.metadata.playerIds = Array.from(this.playerSet);
-    this.metadata.eventTypeCounts = Object.fromEntries(this.eventCounts) as Record<SourceEventType, number>;
+    this.metadata.eventTypeCounts = Object.fromEntries(
+      this.eventCounts,
+    ) as Record<SourceEventType, number>;
   }
 
   /**
@@ -205,17 +154,18 @@ export class EventJournal {
    * Get entries filtered by event type
    */
   getEntriesByType(eventType: SourceEventType): JournalEntry[] {
-    return this.entries.filter(entry => entry.eventType === eventType);
+    return this.entries.filter((entry) => entry.eventType === eventType);
   }
 
   /**
    * Get entries for a specific player
    */
   getEntriesByPlayer(playerId: string): JournalEntry[] {
-    return this.entries.filter(entry =>
-      entry.metadata?.playerId === playerId ||
-      entry.metadata?.victimId === playerId ||
-      (entry.metadata?.assistIds as string[])?.includes(playerId)
+    return this.entries.filter(
+      (entry) =>
+        entry.metadata?.playerId === playerId ||
+        entry.metadata?.victimId === playerId ||
+        (entry.metadata?.assistIds as string[])?.includes(playerId),
     );
   }
 
@@ -223,8 +173,8 @@ export class EventJournal {
    * Get entries within a time range (game time)
    */
   getEntriesByTimeRange(startTime: number, endTime: number): JournalEntry[] {
-    return this.entries.filter(entry =>
-      entry.gameTime >= startTime && entry.gameTime <= endTime
+    return this.entries.filter(
+      (entry) => entry.gameTime >= startTime && entry.gameTime <= endTime,
     );
   }
 
@@ -256,7 +206,9 @@ export class EventJournal {
   private flushToStorage(): void {
     // Placeholder: only log when debug is enabled to reduce noise
     if (process.env.DEBUG_JOURNAL === 'true') {
-      console.log(`[Journal] Would flush ${this.entries.length} entries to storage`);
+      console.log(
+        `[Journal] Would flush ${this.entries.length} entries to storage`,
+      );
     }
   }
 
@@ -266,28 +218,32 @@ export class EventJournal {
   toJSON(): { metadata: JournalMetadata; entries: JournalEntry[] } {
     return {
       metadata: this.getMetadata(),
-      entries: [...this.entries]
+      entries: [...this.entries],
     };
   }
 
   /**
    * Create a journal from JSON data
    */
-  static fromJSON(data: { metadata: JournalMetadata; entries: JournalEntry[] }): EventJournal {
+  static fromJSON(data: {
+    metadata: JournalMetadata;
+    entries: JournalEntry[];
+  }): EventJournal {
     const journal = new EventJournal(data.metadata.id, {
-      matchId: data.metadata.matchId
+      matchId: data.metadata.matchId,
     });
 
     // Restore the internal state
     journal.entries = [...data.entries];
-    journal.currentId = data.entries.length > 0
-      ? Math.max(...data.entries.map(e => e.id)) + 1
-      : 0;
+    journal.currentId =
+      data.entries.length > 0
+        ? Math.max(...data.entries.map((e) => e.id)) + 1
+        : 0;
     journal.metadata = { ...data.metadata };
     journal.startTime = data.metadata.createdAt.getTime();
 
     // Rebuild player set and event counts
-    data.entries.forEach(entry => {
+    data.entries.forEach((entry) => {
       if (entry.metadata?.playerId) {
         journal.playerSet.add(entry.metadata.playerId);
       }

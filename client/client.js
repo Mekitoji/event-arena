@@ -21,7 +21,12 @@ const state = {
   streaks: new Map(), // playerId -> streak count
   killFeed: [], // Recent kill entries: [{killer, victim, weapon, assistIds, timestamp}]
   map: { obstacles: [] },
-  effects: { damage: new Map(), death: new Map(), dashTrails: new Map(), dashActive: new Set() },
+  effects: {
+    damage: new Map(),
+    death: new Map(),
+    dashTrails: new Map(),
+    dashActive: new Set(),
+  },
   mouse: { x: 0, y: 0 },
   lastAim: { x: 1, y: 0 },
   match: {
@@ -29,27 +34,29 @@ const state = {
     mode: null,
     phase: 'idle', // 'idle' | 'countdown' | 'active' | 'ended'
     startsAt: null, // epoch ms
-    endsAt: null,   // epoch ms (optional)
+    endsAt: null, // epoch ms (optional)
   },
   announcements: [], // [{kind:'streak', playerId, name, category, streak, message, timestamp}]
 };
 
 ws.addEventListener('open', () => {
   // Subscribe to server-driven HUD widgets first
-  ws.send(JSON.stringify({
-    type: 'cmd:hud:subscribe',
-    widgets: ['scoreboard', 'match', 'feed', 'streaks', 'announcements'],
-  }));
+  ws.send(
+    JSON.stringify({
+      type: 'cmd:hud:subscribe',
+      widgets: ['scoreboard', 'match', 'feed', 'streaks', 'announcements'],
+    }),
+  );
 
   // Include optional matchId so server can bind player to a match, if already created
-  ws.send(JSON.stringify({
-    type: 'cmd:join',
-    name: 'Player' + Math.floor(Math.random() * 1000),
-    matchId: state.match.id ?? undefined,
-  }));
-
+  ws.send(
+    JSON.stringify({
+      type: 'cmd:join',
+      name: 'Player' + Math.floor(Math.random() * 1000),
+      matchId: state.match.id ?? undefined,
+    }),
+  );
 });
-
 ws.addEventListener('message', (ev) => {
   const e = JSON.parse(ev.data);
   // Pipe events to sound system (uses internal dedup for HUD deltas)
@@ -58,7 +65,11 @@ ws.addEventListener('message', (ev) => {
   if (e.type === 'session:started') {
     state.me = e.playerId;
     if (!state.players.has(e.playerId)) {
-      state.players.set(e.playerId, { id: e.playerId, pos: { x: 100, y: 100 }, hp: 100 });
+      state.players.set(e.playerId, {
+        id: e.playerId,
+        pos: { x: 100, y: 100 },
+        hp: 100,
+      });
     }
     e.players.forEach((info) => {
       const p = state.players.get(info.id) || {
@@ -84,7 +95,12 @@ ws.addEventListener('message', (ev) => {
 
   if (e.type === 'player:join') {
     if (!state.players.has(e.playerId)) {
-      state.players.set(e.playerId, { id: e.playerId, pos: { x: 100, y: 100 }, hp: 100, name: e.name });
+      state.players.set(e.playerId, {
+        id: e.playerId,
+        pos: { x: 100, y: 100 },
+        hp: 100,
+        name: e.name,
+      });
     } else {
       const p = state.players.get(e.playerId);
       p.name = e.name ?? p.name;
@@ -100,7 +116,12 @@ ws.addEventListener('message', (ev) => {
     }
   }
   if (e.type === 'player:move') {
-    const p = state.players.get(e.playerId) || { id: e.playerId, pos: { x: 0, y: 0 }, hp: 100, face: { x: 1, y: 0 } };
+    const p = state.players.get(e.playerId) || {
+      id: e.playerId,
+      pos: { x: 0, y: 0 },
+      hp: 100,
+      face: { x: 1, y: 0 },
+    };
     p.pos = e.pos;
     if (e.dir) p.face = e.dir;
     state.players.set(e.playerId, p);
@@ -109,7 +130,11 @@ ws.addEventListener('message', (ev) => {
     state.map.obstacles = e.obstacles || [];
   }
   if (e.type === 'projectile:spawned') {
-    state.projectiles.set(e.id, { id: e.id, pos: e.pos, kind: e.kind || 'bullet' });
+    state.projectiles.set(e.id, {
+      id: e.id,
+      pos: e.pos,
+      kind: e.kind || 'bullet',
+    });
   }
 
   if (e.type === 'player:aimed') {
@@ -127,8 +152,9 @@ ws.addEventListener('message', (ev) => {
     state.match.mode = e.mode ?? null;
     state.match.phase = e.startsAt || e.countdownMs ? 'countdown' : 'idle';
     if (e.startsAt) state.match.startsAt = e.startsAt;
-    else if (typeof e.countdownMs === 'number') state.match.startsAt = Date.now() + e.countdownMs;
-    else state.match.startsAt = null;
+    else if (typeof e.countdownMs === 'number') {
+      state.match.startsAt = Date.now() + e.countdownMs;
+    } else state.match.startsAt = null;
     state.match.endsAt = null;
   }
   if (e.type === 'match:started') {
@@ -136,7 +162,9 @@ ws.addEventListener('message', (ev) => {
     state.match.startsAt = state.match.startsAt ?? Date.now();
     // Optionally accept endsAt/duration for a visible timer
     if (e.endsAt) state.match.endsAt = e.endsAt;
-    else if (typeof e.durationMs === 'number') state.match.endsAt = Date.now() + e.durationMs;
+    else if (typeof e.durationMs === 'number') {
+      state.match.endsAt = Date.now() + e.durationMs;
+    }
   }
   if (e.type === 'match:ended') {
     state.match.phase = 'ended';
@@ -152,8 +180,17 @@ ws.addEventListener('message', (ev) => {
     // Rebuild scores map and sync player hp/dead/name
     const scores = new Map();
     for (const r of e.rows || []) {
-      scores.set(r.playerId, { kills: r.kills || 0, deaths: r.deaths || 0, assists: r.assists || 0 });
-      const p = state.players.get(r.playerId) || { id: r.playerId, pos: { x: 0, y: 0 }, hp: r.hp ?? 100, name: r.name };
+      scores.set(r.playerId, {
+        kills: r.kills || 0,
+        deaths: r.deaths || 0,
+        assists: r.assists || 0,
+      });
+      const p = state.players.get(r.playerId) || {
+        id: r.playerId,
+        pos: { x: 0, y: 0 },
+        hp: r.hp ?? 100,
+        name: r.name,
+      };
       if (r.name) p.name = r.name;
       if (typeof r.hp === 'number') p.hp = r.hp;
       if (typeof r.isDead === 'boolean') p.isDead = r.isDead;
@@ -183,7 +220,11 @@ ws.addEventListener('message', (ev) => {
   }
 
   if (e.type === 'projectile:moved') {
-    const pr = state.projectiles.get(e.id) || { id: e.id, pos: { x: 0, y: 0 }, kind: 'bullet' };
+    const pr = state.projectiles.get(e.id) || {
+      id: e.id,
+      pos: { x: 0, y: 0 },
+      kind: 'bullet',
+    };
     pr.pos = e.pos;
     state.projectiles.set(e.id, pr);
   }
@@ -194,7 +235,14 @@ ws.addEventListener('message', (ev) => {
     // simple spark effect at projectile position next frame
     const pr = state.projectiles.get(e.id);
     if (!state.effects.sparks) state.effects.sparks = [];
-    if (pr) state.effects.sparks.push({ x: pr.pos.x, y: pr.pos.y, ts: performance.now(), dur: 150 });
+    if (pr) {
+      state.effects.sparks.push({
+        x: pr.pos.x,
+        y: pr.pos.y,
+        ts: performance.now(),
+        dur: 150,
+      });
+    }
   }
   if (e.type === 'pickup:spawned') {
     state.pickups.set(e.id, { id: e.id, pos: e.pos, kind: e.kind });
@@ -211,13 +259,21 @@ ws.addEventListener('message', (ev) => {
   }
   if (e.type === 'buff:expired') {
     const b = state.buffs.get(e.playerId);
-    if (b) { delete b[e.kind]; state.buffs.set(e.playerId, b); }
+    if (b) {
+      delete b[e.kind];
+      state.buffs.set(e.playerId, b);
+    }
   }
   if (e.type === 'explosion:spawned') {
     // simple shockwave effect
     const id = `expl-${performance.now()}`;
     if (!state.effects.explosions) state.effects.explosions = new Map();
-    state.effects.explosions.set(id, { start: performance.now(), pos: e.pos, radius: e.radius, dur: 350 });
+    state.effects.explosions.set(id, {
+      start: performance.now(),
+      pos: e.pos,
+      radius: e.radius,
+      dur: 350,
+    });
   }
   if (e.type === 'knockback:applied') {
     if (state.me === e.targetId) {
@@ -239,7 +295,11 @@ ws.addEventListener('message', (ev) => {
       // Mark player as dead and add death effect
       p.hp = 0;
       p.isDead = true;
-      state.effects.death.set(e.playerId, { start: performance.now(), dur: 450, pos: { ...p.pos } });
+      state.effects.death.set(e.playerId, {
+        start: performance.now(),
+        dur: 450,
+        pos: { ...p.pos },
+      });
 
       if (state.me === e.playerId) {
         // For my own death, still keep in players list but mark as dead
@@ -274,7 +334,9 @@ addEventListener('keyup', (e) => {
   if (key) keys.delete(key);
 });
 addEventListener('blur', () => keys.clear());
-addEventListener('visibilitychange', () => { if (document.visibilityState !== 'visible') keys.clear(); });
+addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') keys.clear();
+});
 cv.addEventListener('mousedown', (e) => {
   if (!state.me) return;
   const me = state.players.get(state.me);
@@ -283,10 +345,15 @@ cv.addEventListener('mousedown', (e) => {
   if (e.button === 0) {
     // Left click: shoot
     sound.onLocalAction('cast', { skill: 'skill:shoot' }); // immediate feedback
-    ws.send(JSON.stringify({ type: 'cmd:cast', playerId: state.me, skill: 'skill:shoot' }));
+    ws.send(
+      JSON.stringify({
+        type: 'cmd:cast',
+        playerId: state.me,
+        skill: 'skill:shoot',
+      }),
+    );
   }
 });
-
 
 // Right click for shotgun
 cv.addEventListener('contextmenu', (e) => {
@@ -296,7 +363,13 @@ cv.addEventListener('contextmenu', (e) => {
   if (!me) return;
   if (me.isDead) return; // don't allow actions (and sounds) while dead
   sound.onLocalAction('cast', { skill: 'skill:shotgun' });
-  ws.send(JSON.stringify({ type: 'cmd:cast', playerId: state.me, skill: 'skill:shotgun' }));
+  ws.send(
+    JSON.stringify({
+      type: 'cmd:cast',
+      playerId: state.me,
+      skill: 'skill:shotgun',
+    }),
+  );
 });
 
 // track mouse position relative to canvas
@@ -316,7 +389,13 @@ addEventListener('keydown', (e) => {
     const me = state.players.get(state.me);
     if (me && !me.isDead) {
       sound.onLocalAction('cast', { skill: 'skill:dash' });
-      ws.send(JSON.stringify({ type: 'cmd:cast', playerId: state.me, skill: 'skill:dash' }));
+      ws.send(
+        JSON.stringify({
+          type: 'cmd:cast',
+          playerId: state.me,
+          skill: 'skill:dash',
+        }),
+      );
     }
   }
 
@@ -331,7 +410,13 @@ addEventListener('keydown', (e) => {
     if (!isDead) {
       // alive: cast rocket
       sound.onLocalAction('cast', { skill: 'skill:rocket' });
-      ws.send(JSON.stringify({ type: 'cmd:cast', playerId: state.me, skill: 'skill:rocket' }));
+      ws.send(
+        JSON.stringify({
+          type: 'cmd:cast',
+          playerId: state.me,
+          skill: 'skill:rocket',
+        }),
+      );
     } else {
       // dead: try respawn
       ws.send(JSON.stringify({ type: 'cmd:respawn', playerId: state.me }));
@@ -341,7 +426,9 @@ addEventListener('keydown', (e) => {
 
 let lastDir = { x: 0, y: 0 };
 
-function sameDir(a, b) { return a.x === b.x && a.y === b.y; }
+function sameDir(a, b) {
+  return a.x === b.x && a.y === b.y;
+}
 
 setInterval(() => {
   if (!state.me) return;
@@ -363,9 +450,12 @@ setInterval(() => {
     const toWorld = 2.2;
     const target = { x: state.mouse.x * toWorld, y: state.mouse.y * toWorld };
     const aim = { x: target.x - me.pos.x, y: target.y - me.pos.y };
-    const sameAim = (a, b) => Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
+    const sameAim = (a, b) =>
+      Math.abs(a.x - b.x) < 1 && Math.abs(a.y - b.y) < 1;
     if (!sameAim(aim, state.lastAim)) {
-      ws.send(JSON.stringify({ type: 'cmd:aim', playerId: state.me, dir: aim }));
+      ws.send(
+        JSON.stringify({ type: 'cmd:aim', playerId: state.me, dir: aim }),
+      );
       state.lastAim = aim;
     }
   }
@@ -431,7 +521,9 @@ function draw() {
   // Center-top streak announcement banner (3s TTL)
   if (Array.isArray(state.announcements) && state.announcements.length) {
     const nowEpoch = Date.now();
-    const visible = state.announcements.filter(a => nowEpoch - a.timestamp < 3000);
+    const visible = state.announcements.filter(
+      (a) => nowEpoch - a.timestamp < 3000,
+    );
     if (visible.length) {
       const ann = visible[visible.length - 1]; // latest
       const text = `${ann.name || ann.playerId} ${ann.message} (${ann.streak})`;
@@ -445,12 +537,18 @@ function draw() {
       const y = 96;
       const alpha = Math.max(0.2, 1 - (nowEpoch - ann.timestamp) / 3000);
       const isMe = ann.playerId === state.me;
-      ctx.fillStyle = isMe ? `rgba(0,120,0,${0.75 * alpha})` : `rgba(0,0,0,${0.6 * alpha})`;
+      ctx.fillStyle = isMe
+        ? `rgba(0,120,0,${0.75 * alpha})`
+        : `rgba(0,0,0,${0.6 * alpha})`;
       ctx.fillRect(x, y, width, height);
-      ctx.strokeStyle = isMe ? `rgba(0,220,0,${alpha})` : `rgba(255,255,255,${alpha})`;
+      ctx.strokeStyle = isMe
+        ? `rgba(0,220,0,${alpha})`
+        : `rgba(255,255,255,${alpha})`;
       ctx.lineWidth = 2;
       ctx.strokeRect(x, y, width, height);
-      ctx.fillStyle = isMe ? `rgba(230,255,230,${alpha})` : `rgba(255,255,255,${alpha})`;
+      ctx.fillStyle = isMe
+        ? `rgba(230,255,230,${alpha})`
+        : `rgba(255,255,255,${alpha})`;
       ctx.fillText(text, x + paddingX, y + paddingY);
     }
   }
@@ -485,7 +583,10 @@ function draw() {
     for (let i = state.effects.sparks.length - 1; i >= 0; i--) {
       const s = state.effects.sparks[i];
       const t = (now - s.ts) / s.dur;
-      if (t >= 1) { state.effects.sparks.splice(i, 1); continue; }
+      if (t >= 1) {
+        state.effects.sparks.splice(i, 1);
+        continue;
+      }
       ctx.strokeStyle = `rgba(255,200,100,${1 - t})`;
       ctx.beginPath();
       ctx.moveTo(s.x / 2.2 - 4, s.y / 2.2);
@@ -498,7 +599,10 @@ function draw() {
   if (state.effects.explosions) {
     for (const [id, fx] of state.effects.explosions) {
       const t = (now - fx.start) / fx.dur;
-      if (t >= 1) { state.effects.explosions.delete(id); continue; }
+      if (t >= 1) {
+        state.effects.explosions.delete(id);
+        continue;
+      }
       const r = fx.radius * t;
       const a = 1 - t;
       ctx.strokeStyle = `rgba(255,120,0,${a})`;
@@ -558,7 +662,8 @@ function draw() {
     // facing indicator (gun)
     const f = p.face || { x: 1, y: 0 };
     const mag = Math.hypot(f.x, f.y) || 1;
-    const fx = f.x / mag, fy = f.y / mag;
+    const fx = f.x / mag,
+      fy = f.y / mag;
     ctx.strokeStyle = '#555';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -593,31 +698,52 @@ function draw() {
 
   // pickups with key labels
   for (const pk of state.pickups.values()) {
-    const x = pk.pos.x / 2.2, y = pk.pos.y / 2.2;
-    let color = '#ccc'; let label = '?';
-    if (pk.kind === 'heal') { color = '#3c3'; label = '+'; }
-    else if (pk.kind === 'haste') { color = '#39c'; label = 'h'; }
-    else if (pk.kind === 'shield') { color = '#cc3'; label = 'S'; }
+    const x = pk.pos.x / 2.2,
+      y = pk.pos.y / 2.2;
+    let color = '#ccc';
+    let label = '?';
+    if (pk.kind === 'heal') {
+      color = '#3c3';
+      label = '+';
+    } else if (pk.kind === 'haste') {
+      color = '#39c';
+      label = 'h';
+    } else if (pk.kind === 'shield') {
+      color = '#cc3';
+      label = 'S';
+    }
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(x, y, 7, 0, Math.PI * 2);
     ctx.fill();
     // outline
-    ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.arc(x, y, 7, 0, Math.PI * 2);
+    ctx.stroke();
     // label
     ctx.fillStyle = '#000';
     ctx.font = '10px sans-serif';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.fillText(label, x, y + 0.5);
-    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
   }
 
   // projectiles with kind-based visuals
   for (const pr of state.projectiles.values()) {
-    let r = 4, color = '#333';
-    if (pr.kind === 'pellet') { r = 3; color = '#555'; }
-    if (pr.kind === 'rocket') { r = 6; color = '#d33'; }
+    let r = 4,
+      color = '#333';
+    if (pr.kind === 'pellet') {
+      r = 3;
+      color = '#555';
+    }
+    if (pr.kind === 'rocket') {
+      r = 6;
+      color = '#d33';
+    }
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(pr.pos.x / 2.2, pr.pos.y / 2.2, r, 0, Math.PI * 2);
@@ -646,21 +772,27 @@ function draw() {
 
     // Buff HUD icons with timers
     const myBuffs = state.buffs.get(me.id) || {};
-    let bx = x; const by = y + h + 24;
+    let bx = x;
+    const by = y + h + 24;
     const nowp = performance.now();
     const drawBuff = (kind, color, label) => {
-      const info = myBuffs[kind]; if (!info || !info.duration) return;
+      const info = myBuffs[kind];
+      if (!info || !info.duration) return;
       const total = info.duration;
       const remainMs = Math.max(0, info.until - nowp);
       const ratio = Math.max(0, Math.min(1, remainMs / total));
       // icon
-      ctx.fillStyle = color; ctx.fillRect(bx, by, 18, 18);
+      ctx.fillStyle = color;
+      ctx.fillRect(bx, by, 18, 18);
       // label on icon
-      ctx.fillStyle = '#000'; ctx.font = '10px sans-serif';
+      ctx.fillStyle = '#000';
+      ctx.font = '10px sans-serif';
       ctx.fillText(label, bx + 5, by + 4);
       // shrinking line timer underneath
-      ctx.fillStyle = '#222'; ctx.fillRect(bx, by + 20, 18, 3);
-      ctx.fillStyle = '#0a0'; ctx.fillRect(bx, by + 20, 18 * ratio, 3);
+      ctx.fillStyle = '#222';
+      ctx.fillRect(bx, by + 20, 18, 3);
+      ctx.fillStyle = '#0a0';
+      ctx.fillRect(bx, by + 20, 18 * ratio, 3);
       bx += 28;
     };
     drawBuff('haste', '#9cf', 'h');
@@ -675,7 +807,6 @@ function draw() {
 
   // Server is authoritative for feed TTL and item capping
   const feedNow = Date.now();
-
 
   for (const entry of state.killFeed) {
     const age = feedNow - entry.timestamp;
@@ -699,7 +830,10 @@ function draw() {
     else if (entry.weapon === 'explosion') weaponText = '💥';
 
     // Killer name (green if me)
-    ctx.fillStyle = entry.killer === state.me ? `rgba(0,255,0,${alpha})` : `rgba(255,255,255,${alpha})`;
+    ctx.fillStyle =
+      entry.killer === state.me
+        ? `rgba(0,255,0,${alpha})`
+        : `rgba(255,255,255,${alpha})`;
     const killerText = `${killerName}`;
     ctx.fillText(killerText, feedX + 4, feedY + 2);
     const killerWidth = ctx.measureText(killerText).width;
@@ -710,7 +844,10 @@ function draw() {
     const weaponWidth = ctx.measureText(weaponText).width;
 
     // Victim name (red if me)
-    ctx.fillStyle = entry.victim === state.me ? `rgba(255,100,100,${alpha})` : `rgba(255,255,255,${alpha})`;
+    ctx.fillStyle =
+      entry.victim === state.me
+        ? `rgba(255,100,100,${alpha})`
+        : `rgba(255,255,255,${alpha})`;
     ctx.fillText(victimName, feedX + 12 + killerWidth + weaponWidth, feedY + 2);
 
     feedY += 18;
@@ -782,7 +919,9 @@ function draw() {
       listY += 16;
     }
   }
-  const playersArr = Array.from(state.players.values()).sort((a, b) => (a.name || a.id).localeCompare(b.name || b.id));
+  const playersArr = Array.from(state.players.values()).sort((a, b) =>
+    (a.name || a.id).localeCompare(b.name || b.id),
+  );
   for (const p of playersArr) {
     const isMe = state.me === p.id;
     const score = state.scores.get(p.id) || { kills: 0, deaths: 0, assists: 0 };
@@ -801,7 +940,11 @@ function draw() {
     // Display: Name: HP | K/D/A with death indicator
     const scoreText = `${score.kills}/${score.deaths}/${score.assists}`;
     const deadIndicator = p.isDead ? ' [DEAD]' : '';
-    ctx.fillText(`${p.name || p.id}: ${p.hp ?? 0} | ${scoreText}${deadIndicator}`, listX, listY);
+    ctx.fillText(
+      `${p.name || p.id}: ${p.hp ?? 0} | ${scoreText}${deadIndicator}`,
+      listX,
+      listY,
+    );
     listY += 20;
   }
 

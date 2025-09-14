@@ -8,13 +8,13 @@ export class PlayerStats {
   public assists: number = 0;
   public currentStreak: number = 0;
   public bestStreak: number = 0;
-  
+
   // Additional stats that could be useful
   public damageDealt: number = 0;
   public damageTaken: number = 0;
   public shotsHit: number = 0;
   public shotsFired: number = 0;
-  
+
   // Match-specific tracking
   public matchStartTime: number;
   public lastKillTime?: number;
@@ -31,7 +31,7 @@ export class PlayerStats {
     this.kills++;
     this.currentStreak++;
     this.lastKillTime = timestamp;
-    
+
     // Update best streak if current streak is higher
     if (this.currentStreak > this.bestStreak) {
       this.bestStreak = this.currentStreak;
@@ -129,11 +129,11 @@ export class PlayerStats {
   getDamagePerMinute(): number {
     const matchDurationMs = Date.now() - this.matchStartTime;
     const matchDurationMin = matchDurationMs / (1000 * 60);
-    
+
     if (matchDurationMin === 0) {
       return 0;
     }
-    
+
     return Math.round(this.damageDealt / matchDurationMin);
   }
 
@@ -154,18 +154,18 @@ export class PlayerStats {
    */
   getStreakAnnouncement(): string | null {
     const category = this.getStreakCategory();
-    
+
     switch (category) {
       case StreakCategory.DOUBLE_KILL:
-        return "Double Kill!";
+        return 'Double Kill!';
       case StreakCategory.KILLING_SPREE:
-        return "Killing Spree!";
+        return 'Killing Spree!';
       case StreakCategory.UNSTOPPABLE:
-        return "Unstoppable!";
+        return 'Unstoppable!';
       case StreakCategory.RAMPAGE:
-        return "Rampage!";
+        return 'Rampage!';
       case StreakCategory.LEGENDARY:
-        return "LEGENDARY!";
+        return 'LEGENDARY!';
       default:
         return null;
     }
@@ -215,7 +215,7 @@ export class PlayerStats {
       damagePerMinute: this.getDamagePerMinute(),
       shotsFired: this.shotsFired,
       shotsHit: this.shotsHit,
-      matchDurationMs: Date.now() - this.matchStartTime
+      matchDurationMs: Date.now() - this.matchStartTime,
     };
   }
 
@@ -235,7 +235,7 @@ export class PlayerStats {
       shotsFired: this.shotsFired,
       matchStartTime: this.matchStartTime,
       lastKillTime: this.lastKillTime,
-      lastDeathTime: this.lastDeathTime
+      lastDeathTime: this.lastDeathTime,
     };
   }
 
@@ -269,7 +269,7 @@ export enum StreakCategory {
   KILLING_SPREE = 'killing_spree',
   UNSTOPPABLE = 'unstoppable',
   RAMPAGE = 'rampage',
-  LEGENDARY = 'legendary'
+  LEGENDARY = 'legendary',
 }
 
 /**

@@ -1,6 +1,6 @@
-import { TProjectileSpawnedEvent } from "../../core/types/events.type";
-import { Vec2 } from "../../core/types/vec2.type";
-import { BaseEvent } from "../abstract";
+import { TProjectileSpawnedEvent } from '../../core/types/events.type';
+import { Vec2 } from '../../core/types/vec2.type';
+import { BaseEvent } from '../abstract';
 
 export class ProjectileSpawnedEvent extends BaseEvent<TProjectileSpawnedEvent> {
   protected readonly type = 'projectile:spawned';
@@ -10,14 +10,22 @@ export class ProjectileSpawnedEvent extends BaseEvent<TProjectileSpawnedEvent> {
     private readonly pos: Vec2,
     private readonly vel: Vec2,
     private readonly kind?: 'bullet' | 'pellet' | 'rocket',
-  ) { super() }
+  ) {
+    super();
+  }
 
   toEmit(): TProjectileSpawnedEvent {
-    return { id: this.id, type: this.type, ownerId: this.ownerId, pos: this.pos, vel: this.vel, kind: this.kind };
+    return {
+      id: this.id,
+      type: this.type,
+      ownerId: this.ownerId,
+      pos: this.pos,
+      vel: this.vel,
+      kind: this.kind,
+    };
   }
 
   toString(): string {
     return JSON.stringify(this.toEmit());
   }
 }
-

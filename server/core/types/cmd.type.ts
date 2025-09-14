@@ -1,4 +1,4 @@
-import { Vec2 } from "./vec2.type";
+import { Vec2 } from './vec2.type';
 
 export type CmdType = `cmd:${string}`;
 export type SkillType = `skill:${string}`;
@@ -11,18 +11,34 @@ export const Skills: Record<Uppercase<string>, SkillType> = {
   NOVA: 'skill:nova',
 } as const;
 
-export type ESkills = typeof Skills[keyof typeof Skills];
+export type ESkills = (typeof Skills)[keyof typeof Skills];
 
-export type BaseCmd<T extends CmdType, P extends object = object> = { type: T } & P;
+export type BaseCmd<T extends CmdType, P extends object = object> = {
+  type: T;
+} & P;
 
 export type CmdJoin = BaseCmd<'cmd:join', { name: string }>;
-export type CmdMove = BaseCmd<'cmd:move', { playerId: string, dir: Vec2 }>;
-export type CmdCast = BaseCmd<'cmd:cast', { playerId: string, skill: ESkills }>;
+export type CmdMove = BaseCmd<'cmd:move', { playerId: string; dir: Vec2 }>;
+export type CmdCast = BaseCmd<'cmd:cast', { playerId: string; skill: ESkills }>;
 export type CmdLeave = BaseCmd<'cmd:leave', { playerId: string }>;
 export type CmdRespawn = BaseCmd<'cmd:respawn', { playerId: string }>;
-export type CmdAim = BaseCmd<'cmd:aim', { playerId: string, dir: Vec2 }>;
+export type CmdAim = BaseCmd<'cmd:aim', { playerId: string; dir: Vec2 }>;
 
-export type CmdHudSubscribe = BaseCmd<'cmd:hud:subscribe', { widgets: string[] }>;
-export type CmdHudUnsubscribe = BaseCmd<'cmd:hud:unsubscribe', { widgets: string[] }>;
+export type CmdHudSubscribe = BaseCmd<
+  'cmd:hud:subscribe',
+  { widgets: string[] }
+>;
+export type CmdHudUnsubscribe = BaseCmd<
+  'cmd:hud:unsubscribe',
+  { widgets: string[] }
+>;
 
-export type Commands = CmdJoin | CmdMove | CmdCast | CmdLeave | CmdRespawn | CmdAim | CmdHudSubscribe | CmdHudUnsubscribe;
+export type Commands =
+  | CmdJoin
+  | CmdMove
+  | CmdCast
+  | CmdLeave
+  | CmdRespawn
+  | CmdAim
+  | CmdHudSubscribe
+  | CmdHudUnsubscribe;

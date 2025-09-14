@@ -1,4 +1,4 @@
-import { Vec2 } from "../../core/types/vec2.type";
+import { Vec2 } from '../../core/types/vec2.type';
 
 /**
  * Base interface for all effects that can be applied to a player
@@ -50,7 +50,7 @@ export enum EffectType {
   HEAL_PULSE = 'heal_pulse',
   SHIELD_GLOW = 'shield_glow',
   HASTE_TRAIL = 'haste_trail',
-  INVULNERABILITY = 'invulnerability'
+  INVULNERABILITY = 'invulnerability',
 }
 
 /**
@@ -157,7 +157,7 @@ export interface InvulnerabilityData extends BaseEffectData {
 /**
  * Union type for all effect data types
  */
-export type EffectData = 
+export type EffectData =
   | DamageFlashData
   | DeathRingData
   | DashTrailData
@@ -206,5 +206,5 @@ export enum EffectEvent {
   ADDED = 'added',
   UPDATED = 'updated',
   EXPIRED = 'expired',
-  REMOVED = 'removed'
+  REMOVED = 'removed',
 }

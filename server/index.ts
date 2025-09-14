@@ -1,7 +1,7 @@
-import { clock } from "./core/clock";
-import { attachBroadcaster } from "./net/broadcaster";
-import { createWsServer } from "./net/ws-server";
-import { createHttpServer } from "./net/http-server";
+import { clock } from './core/clock';
+import { attachBroadcaster } from './net/broadcaster';
+import { createWsServer } from './net/ws-server';
+import { createHttpServer } from './net/http-server';
 
 import './systems';
 

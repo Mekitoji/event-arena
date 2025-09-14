@@ -20,46 +20,70 @@ export function createHttpServer(options: HttpServerOptions = {}) {
     : path.join(artifactsDir, 'journals');
 
   const storage = new JournalStorage({
-    baseDir: options.journalsDir ?? envJournalsDir ?? path.join(process.cwd(), 'journals'),
+    baseDir:
+      options.journalsDir ??
+      envJournalsDir ??
+      path.join(process.cwd(), 'journals'),
     compress: true,
     // Disable index cache so /api/journals always reflects latest files
     createIndex: false,
   });
 
   // Initialize storage lazily; don't block server start
-  storage.init().catch((e) => console.warn('[HTTP] Journal storage init warning:', e));
+  storage
+    .init()
+    .catch((e) => console.warn('[HTTP] Journal storage init warning:', e));
 
   const server = http.createServer(async (req, res) => {
     try {
-      const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+      const url = new URL(
+        req.url || '/',
+        `http://${req.headers.host || 'localhost'}`,
+      );
 
       // CORS for local viewing/testing
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
       res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-      if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+      if (req.method === 'OPTIONS') {
+        res.writeHead(204);
+        res.end();
+        return;
+      }
 
       // Serve minimal journal UI (optional)
-      if (options.enableJournalUi && req.method === 'GET' && (url.pathname === '/journal' || url.pathname === '/journal.html')) {
+      if (
+        options.enableJournalUi &&
+        req.method === 'GET' &&
+        (url.pathname === '/journal' || url.pathname === '/journal.html')
+      ) {
         const filePath = path.join(process.cwd(), 'client', 'journal.html');
         try {
           const content = await fs.readFile(filePath);
           res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
           res.end(content);
         } catch {
-          res.writeHead(404); res.end('journal.html not found');
+          res.writeHead(404);
+          res.end('journal.html not found');
         }
         return;
       }
 
-      if (options.enableJournalUi && req.method === 'GET' && url.pathname === '/journal.js') {
+      if (
+        options.enableJournalUi &&
+        req.method === 'GET' &&
+        url.pathname === '/journal.js'
+      ) {
         const filePath = path.join(process.cwd(), 'client', 'journal.js');
         try {
           const content = await fs.readFile(filePath);
-          res.writeHead(200, { 'Content-Type': 'application/javascript; charset=utf-8' });
+          res.writeHead(200, {
+            'Content-Type': 'application/javascript; charset=utf-8',
+          });
           res.end(content);
         } catch {
-          res.writeHead(404); res.end('// journal.js not found');
+          res.writeHead(404);
+          res.end('// journal.js not found');
         }
         return;
       }
@@ -77,7 +101,11 @@ export function createHttpServer(options: HttpServerOptions = {}) {
       if (req.method === 'GET' && m) {
         const id = decodeURIComponent(m[1]);
         const journal = await storage.load(id);
-        if (!journal) { res.writeHead(404, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ error: 'Not found' })); return; }
+        if (!journal) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Not found' }));
+          return;
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify(journal.toJSON()));
         return;
@@ -98,4 +126,3 @@ export function createHttpServer(options: HttpServerOptions = {}) {
 
   return server;
 }
-

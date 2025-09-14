@@ -1,7 +1,14 @@
-import { Vec2 } from "../core/types/vec2.type";
-import { EffectManager, EffectFactory, EffectCombinations, EffectType, DashTrailEffect, IEffect } from "./effects";
-import { PlayerStats } from "./player-stats";
-import { Config } from "../config";
+import { Vec2 } from '../core/types/vec2.type';
+import {
+  EffectManager,
+  EffectFactory,
+  EffectCombinations,
+  EffectType,
+  DashTrailEffect,
+  IEffect,
+} from './effects';
+import { PlayerStats } from './player-stats';
+import { Config } from '../config';
 
 export class Player {
   public readonly id: string;
@@ -37,7 +44,7 @@ export class Player {
     name: string,
     initialPos: Vec2,
     initialVel: Vec2 = { x: 0, y: 0 },
-    initialFace: Vec2 = { x: 1, y: 0 }
+    initialFace: Vec2 = { x: 1, y: 0 },
   ) {
     this.id = id;
     this.name = name;
@@ -75,7 +82,7 @@ export class Player {
   takeDamage(
     amount: number,
     weaponType: 'bullet' | 'pellet' | 'rocket' | 'explosion' = 'bullet',
-    knockbackDirection?: Vec2
+    knockbackDirection?: Vec2,
   ): boolean {
     const wasAlive = this.isAlive();
     this.hp = Math.max(0, this.hp - amount);
@@ -88,7 +95,7 @@ export class Player {
       this.id,
       amount,
       weaponType,
-      knockbackDirection
+      knockbackDirection,
     );
 
     for (const effect of damageEffects) {
@@ -121,12 +128,15 @@ export class Player {
     this.isDead = true;
     this.diedAt = Date.now();
     this.hp = 0;
-    
+
     // Record death in stats
     this.stats.addDeath();
 
     // Add death effects
-    const deathEffects = EffectCombinations.createDeathEffects(this.id, this.pos);
+    const deathEffects = EffectCombinations.createDeathEffects(
+      this.id,
+      this.pos,
+    );
     for (const effect of deathEffects) {
       this.effects.addEffect(effect);
     }
@@ -153,7 +163,7 @@ export class Player {
 
     // Clear all visual effects on respawn
     this.effects.clearAllEffects();
-    
+
     // Reset stats for new life (but keep match stats)
     // Note: We don't call stats.reset() here as that would reset the entire match
   }
@@ -236,7 +246,11 @@ export class Player {
     this.hasteFactor = factor;
 
     // Add haste visual effects
-    const hasteEffects = EffectCombinations.createBuffEffects(this.id, 'haste', durationMs);
+    const hasteEffects = EffectCombinations.createBuffEffects(
+      this.id,
+      'haste',
+      durationMs,
+    );
     for (const effect of hasteEffects) {
       this.effects.addEffect(effect);
     }
@@ -249,7 +263,11 @@ export class Player {
     this.shieldUntil = Date.now() + durationMs;
 
     // Add shield visual effects
-    const shieldEffects = EffectCombinations.createBuffEffects(this.id, 'shield', durationMs);
+    const shieldEffects = EffectCombinations.createBuffEffects(
+      this.id,
+      'shield',
+      durationMs,
+    );
     for (const effect of shieldEffects) {
       this.effects.addEffect(effect);
     }
@@ -258,7 +276,11 @@ export class Player {
   /**
    * Apply dash effect to the player
    */
-  applyDash(durationMs: number, factor: number = 3.0, hasIframes: boolean = true): void {
+  applyDash(
+    durationMs: number,
+    factor: number = 3.0,
+    hasIframes: boolean = true,
+  ): void {
     this.dashUntil = Date.now() + durationMs;
     this.dashFactor = factor;
 
@@ -267,7 +289,10 @@ export class Player {
     }
 
     // Add dash visual effects
-    const dashEffects = EffectCombinations.createDashEffects(this.id, durationMs);
+    const dashEffects = EffectCombinations.createDashEffects(
+      this.id,
+      durationMs,
+    );
     for (const effect of dashEffects) {
       this.effects.addEffect(effect);
     }
@@ -280,7 +305,7 @@ export class Player {
     this.kb = {
       vx,
       vy,
-      until: Date.now() + durationMs
+      until: Date.now() + durationMs,
     };
   }
 
@@ -318,7 +343,7 @@ export class Player {
     if (length > 0) {
       this.faceTarget = {
         x: dir.x / length,
-        y: dir.y / length
+        y: dir.y / length,
       };
     }
   }
@@ -335,7 +360,9 @@ export class Player {
    * Update dash trail position if player is dashing
    */
   updateDashTrail(): void {
-    const dashTrail = this.effects.getEffectByType(EffectType.DASH_TRAIL) as DashTrailEffect;
+    const dashTrail = this.effects.getEffectByType(
+      EffectType.DASH_TRAIL,
+    ) as DashTrailEffect;
     if (dashTrail && this.isDashing()) {
       dashTrail.addPosition(this.pos, Date.now());
     }
@@ -459,7 +486,7 @@ export class Player {
       shieldUntil: this.shieldUntil,
       stats: this.stats.toJSON(),
       isDead: this.isDead,
-      diedAt: this.diedAt
+      diedAt: this.diedAt,
     };
   }
 }

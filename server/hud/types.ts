@@ -1,6 +1,18 @@
-import type { SourceEvents, THudScoreboardUpdate, THudMatchUpdate, THudFeedUpdate, THudStreaksUpdate, THudAnnouncementsUpdate } from '../core/types/events.type';
+import type {
+  SourceEvents,
+  THudScoreboardUpdate,
+  THudMatchUpdate,
+  THudFeedUpdate,
+  THudStreaksUpdate,
+  THudAnnouncementsUpdate,
+} from '../core/types/events.type';
 
-export type WidgetKey = 'scoreboard' | 'match' | 'feed' | 'streaks' | 'announcements';
+export type WidgetKey =
+  | 'scoreboard'
+  | 'match'
+  | 'feed'
+  | 'streaks'
+  | 'announcements';
 
 export type WidgetSnapshotMap = {
   scoreboard: THudScoreboardUpdate;
@@ -16,4 +28,3 @@ export interface HudWidget<K extends WidgetKey = WidgetKey> {
   snapshot(): WidgetSnapshotMap[K];
   onEvent(e: SourceEvents): boolean;
 }
-

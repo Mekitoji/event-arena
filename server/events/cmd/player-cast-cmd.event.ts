@@ -1,13 +1,13 @@
-import { TCmdCastEvent } from "../../core/types/events.type";
-import { ESkills } from "../../core/types/cmd.type";
-import { BaseEvent } from "../abstract";
+import { TCmdCastEvent } from '../../core/types/events.type';
+import { ESkills } from '../../core/types/cmd.type';
+import { BaseEvent } from '../abstract';
 
 export class PlayerCastCmdEvent extends BaseEvent<TCmdCastEvent> {
   protected readonly type = 'cmd:cast' as const;
 
   constructor(
     private readonly playerId: string,
-    private readonly skill: ESkills
+    private readonly skill: ESkills,
   ) {
     super();
   }
@@ -16,7 +16,7 @@ export class PlayerCastCmdEvent extends BaseEvent<TCmdCastEvent> {
     return {
       type: this.type,
       playerId: this.playerId,
-      skill: this.skill
+      skill: this.skill,
     };
   }
 
@@ -24,7 +24,7 @@ export class PlayerCastCmdEvent extends BaseEvent<TCmdCastEvent> {
     return JSON.stringify({
       type: this.type,
       playerId: this.playerId,
-      skill: this.skill
+      skill: this.skill,
     });
   }
 }

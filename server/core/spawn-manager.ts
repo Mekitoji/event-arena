@@ -1,5 +1,5 @@
-import { Vec2 } from "./types/vec2.type";
-import { World } from "./world";
+import { Vec2 } from './types/vec2.type';
+import { World } from './world';
 
 export interface SpawnMargins {
   left: number;
@@ -47,9 +47,11 @@ export class SpawnManager {
    * Generate a random position within the safe spawn area
    */
   getRandomSafePosition(): Vec2 {
-    const safeWidth = World.bounds.w - this.config.margins.left - this.config.margins.right;
-    const safeHeight = World.bounds.h - this.config.margins.top - this.config.margins.bottom;
-    
+    const safeWidth =
+      World.bounds.w - this.config.margins.left - this.config.margins.right;
+    const safeHeight =
+      World.bounds.h - this.config.margins.top - this.config.margins.bottom;
+
     return {
       x: this.config.margins.left + Math.random() * safeWidth,
       y: this.config.margins.top + Math.random() * safeHeight,
@@ -96,19 +98,19 @@ export class SpawnManager {
    */
   findSafeSpawnPosition(customMinDistance?: number): Vec2 {
     const minDistance = customMinDistance ?? this.config.minDistanceFromPlayers;
-    
+
     for (let tries = 0; tries < this.config.maxAttempts; tries++) {
       const pos = this.getRandomSafePosition();
-      
+
       // Check not inside obstacle rects
       if (this.isPositionBlocked(pos)) continue;
-      
+
       // Check not too close to players
       if (this.getDistanceToNearestPlayer(pos) < minDistance) continue;
-      
+
       return pos;
     }
-    
+
     // Fallback: pick the farthest safe position from players among samples
     return this.findBestFallbackPosition();
   }
@@ -119,25 +121,25 @@ export class SpawnManager {
   private findBestFallbackPosition(): Vec2 {
     let best = { x: 100, y: 100, score: -1 };
     const fallbackSamples = 16;
-    
+
     for (let i = 0; i < fallbackSamples; i++) {
       const pos = this.getRandomSafePosition();
-      
+
       // Skip positions that are blocked by obstacles
       if (this.isPositionBlocked(pos)) continue;
-      
+
       const distanceToNearest = this.getDistanceToNearestPlayer(pos);
-      
+
       if (distanceToNearest > best.score) {
         best = { x: pos.x, y: pos.y, score: distanceToNearest };
       }
     }
-    
+
     // If no unblocked position found, use emergency fallback
     if (best.score === -1) {
       return this.getEmergencyFallbackPosition();
     }
-    
+
     return { x: best.x, y: best.y };
   }
 
@@ -149,26 +151,26 @@ export class SpawnManager {
     // Try predefined safe spots in corners/center
     const emergencySpots = [
       // Center of map
-      { 
-        x: World.bounds.w / 2, 
-        y: World.bounds.h / 2 
+      {
+        x: World.bounds.w / 2,
+        y: World.bounds.h / 2,
       },
       // Four corners (with margins)
-      { 
-        x: this.config.margins.left + 50, 
-        y: this.config.margins.top + 50 
+      {
+        x: this.config.margins.left + 50,
+        y: this.config.margins.top + 50,
       },
-      { 
-        x: World.bounds.w - this.config.margins.right - 50, 
-        y: this.config.margins.top + 50 
+      {
+        x: World.bounds.w - this.config.margins.right - 50,
+        y: this.config.margins.top + 50,
       },
-      { 
-        x: this.config.margins.left + 50, 
-        y: World.bounds.h - this.config.margins.bottom - 50 
+      {
+        x: this.config.margins.left + 50,
+        y: World.bounds.h - this.config.margins.bottom - 50,
       },
-      { 
-        x: World.bounds.w - this.config.margins.right - 50, 
-        y: World.bounds.h - this.config.margins.bottom - 50 
+      {
+        x: World.bounds.w - this.config.margins.right - 50,
+        y: World.bounds.h - this.config.margins.bottom - 50,
       },
     ];
 
@@ -181,9 +183,9 @@ export class SpawnManager {
 
     // Ultimate fallback: return center of map (even if blocked)
     console.warn('SpawnManager: No safe position found, using center of map');
-    return { 
-      x: World.bounds.w / 2, 
-      y: World.bounds.h / 2 
+    return {
+      x: World.bounds.w / 2,
+      y: World.bounds.h / 2,
     };
   }
 
@@ -191,23 +193,23 @@ export class SpawnManager {
    * Adjust existing spawn points to respect margins
    */
   adjustSpawnPointsToMargins(spawnPoints: Vec2[]): Vec2[] {
-    return spawnPoints.map(point => {
+    return spawnPoints.map((point) => {
       const adjusted = { ...point };
-      
+
       // Adjust x coordinate
       if (adjusted.x < this.config.margins.left) {
         adjusted.x = this.config.margins.left;
       } else if (adjusted.x > World.bounds.w - this.config.margins.right) {
         adjusted.x = World.bounds.w - this.config.margins.right;
       }
-      
+
       // Adjust y coordinate
       if (adjusted.y < this.config.margins.top) {
         adjusted.y = this.config.margins.top;
       } else if (adjusted.y > World.bounds.h - this.config.margins.bottom) {
         adjusted.y = World.bounds.h - this.config.margins.bottom;
       }
-      
+
       return adjusted;
     });
   }
@@ -229,12 +231,19 @@ export class SpawnManager {
   /**
    * Get safe spawn bounds as a rectangle
    */
-  getSafeSpawnBounds(): { x: number; y: number; width: number; height: number } {
+  getSafeSpawnBounds(): {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  } {
     return {
       x: this.config.margins.left,
       y: this.config.margins.top,
-      width: World.bounds.w - this.config.margins.left - this.config.margins.right,
-      height: World.bounds.h - this.config.margins.top - this.config.margins.bottom,
+      width:
+        World.bounds.w - this.config.margins.left - this.config.margins.right,
+      height:
+        World.bounds.h - this.config.margins.top - this.config.margins.bottom,
     };
   }
 }

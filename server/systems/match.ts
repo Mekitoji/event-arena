@@ -1,8 +1,12 @@
-import { eventBus } from "../core/event-bus";
-import { World } from "../core/world";
-import { broadcast } from "../net/broadcaster";
-import type { TMatchCreatedEvent, TMatchStartedEvent, TMatchEndedEvent } from "../core/types/events.type";
-import { ScoreUpdateEvent } from "../events";
+import { eventBus } from '../core/event-bus';
+import { World } from '../core/world';
+import { broadcast } from '../net/broadcaster';
+import type {
+  TMatchCreatedEvent,
+  TMatchStartedEvent,
+  TMatchEndedEvent,
+} from '../core/types/events.type';
+import { ScoreUpdateEvent } from '../events';
 
 interface Match {
   id: string;
@@ -87,7 +91,9 @@ class MatchSystem {
     };
 
     broadcast(event);
-    console.log(`Match ${matchId} started${durationMs ? ` for ${durationMs}ms` : ''}`);
+    console.log(
+      `Match ${matchId} started${durationMs ? ` for ${durationMs}ms` : ''}`,
+    );
 
     // Schedule match end if duration is specified
     if (durationMs) {
@@ -138,7 +144,6 @@ class MatchSystem {
   }
 
   private resetAllPlayerScores() {
-
     for (const player of World.players.values()) {
       // Reset player stats using the stats class
       player.stats.reset();
@@ -155,9 +160,12 @@ class MatchSystem {
 export const matchSystem = new MatchSystem();
 
 // Listen to player join events to add them to the current match
-eventBus.on('player:join', (event: { type: 'player:join', playerId: string, name: string }) => {
-  const match = matchSystem.addPlayerToMatch(event.playerId);
-  if (match) {
-    console.log(`Player ${event.playerId} added to match ${match.id}`);
-  }
-});
+eventBus.on(
+  'player:join',
+  (event: { type: 'player:join'; playerId: string; name: string }) => {
+    const match = matchSystem.addPlayerToMatch(event.playerId);
+    if (match) {
+      console.log(`Player ${event.playerId} added to match ${match.id}`);
+    }
+  },
+);

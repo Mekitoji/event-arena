@@ -1,5 +1,5 @@
-import { eventBus } from "./event-bus";
-import { TickPreEvent, TickPostEvent } from "../events";
+import { eventBus } from './event-bus';
+import { TickPreEvent, TickPostEvent } from '../events';
 
 /**
  * Clock class that drives the server tick loop.

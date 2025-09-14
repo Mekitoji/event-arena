@@ -11,14 +11,19 @@ export function setupSoundUI(sound) {
   };
 
   function persistSoundSettings() {
-    localStorage.setItem('ea:sound:volume', String(Math.round(sound.volume * 100)));
+    localStorage.setItem(
+      'ea:sound:volume',
+      String(Math.round(sound.volume * 100)),
+    );
     localStorage.setItem('ea:sound:muted', sound.muted ? '1' : '0');
   }
 
   function updateSoundUIFromSound() {
     if (!ui.container) return;
     const volPct = Math.round(sound.volume * 100);
-    if (ui.btnMute) ui.btnMute.setAttribute('aria-pressed', sound.muted ? 'true' : 'false');
+    if (ui.btnMute) {
+      ui.btnMute.setAttribute('aria-pressed', sound.muted ? 'true' : 'false');
+    }
     if (ui.iconMute) ui.iconMute.textContent = sound.muted ? '🔇' : '🔊';
     if (ui.volRange) ui.volRange.value = String(volPct);
     if (ui.volLabel) ui.volLabel.textContent = `${volPct}%`;
@@ -27,14 +32,26 @@ export function setupSoundUI(sound) {
 
   // Load persisted settings before first unlock
   const sv = Number(localStorage.getItem('ea:sound:volume'));
-  if (Number.isFinite(sv)) sound.setVolume(Math.max(0, Math.min(100, sv)) / 100);
+  if (Number.isFinite(sv)) {
+    sound.setVolume(Math.max(0, Math.min(100, sv)) / 100);
+  }
   const sm = localStorage.getItem('ea:sound:muted');
   if (sm === '1') sound.setMuted(true);
 
   if (ui.container) {
     // prevent game input when interacting with UI and unlock audio
-    ui.container.addEventListener('pointerdown', (e) => { sound.unlock(); e.stopPropagation(); }, { passive: true });
-    ui.container.addEventListener('mousedown', (e) => { sound.unlock(); e.stopPropagation(); });
+    ui.container.addEventListener(
+      'pointerdown',
+      (e) => {
+        sound.unlock();
+        e.stopPropagation();
+      },
+      { passive: true },
+    );
+    ui.container.addEventListener('mousedown', (e) => {
+      sound.unlock();
+      e.stopPropagation();
+    });
   }
   if (ui.btnMute) {
     ui.btnMute.addEventListener('click', (e) => {
@@ -83,4 +100,3 @@ export function setupSoundUI(sound) {
 
   return { update: updateSoundUIFromSound };
 }
-

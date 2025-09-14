@@ -1,18 +1,23 @@
-import { eventBus } from "../core/event-bus";
-import { Config } from "../config";
-import { CmdJoin, Skills } from "../core/types/cmd.type";
-import { TCmdAimEvent, TCmdCastEvent, TCmdLeaveEvent, TCmdMoveEvent } from "../core/types/events.type";
-import { Vec2 } from "../core/types/vec2.type";
-import { World } from "../core/world";
-import { Player } from "../entities/player";
-import { Projectile } from "../entities/projectile";
+import { eventBus } from '../core/event-bus';
+import { Config } from '../config';
+import { CmdJoin, Skills } from '../core/types/cmd.type';
+import {
+  TCmdAimEvent,
+  TCmdCastEvent,
+  TCmdLeaveEvent,
+  TCmdMoveEvent,
+} from '../core/types/events.type';
+import { Vec2 } from '../core/types/vec2.type';
+import { World } from '../core/world';
+import { Player } from '../entities/player';
+import { Projectile } from '../entities/projectile';
 import {
   DashStartedEvent,
   PlayerAimedEvent,
   PlayerDiedEvent,
   PlayerJoinedEvent,
-  ProjectileSpawnedEvent
-} from "../events";
+  ProjectileSpawnedEvent,
+} from '../events';
 
 const DEFAULT_POS: Vec2 = { x: 100, y: 100 };
 const DEFAULT_VEL: Vec2 = { x: 0, y: 0 };
@@ -21,7 +26,6 @@ const DEFAULT_FACE: Vec2 = { x: 0, y: 0 };
 
 // Track last movement direction to avoid redundant cmd:move processing
 const lastMoveDir = new Map<string, Vec2>();
-
 
 eventBus.on('cmd:join', (e: CmdJoin) => {
   const id = crypto.randomUUID();
@@ -33,7 +37,7 @@ eventBus.on('cmd:join', (e: CmdJoin) => {
     name,
     { ...DEFAULT_POS },
     { ...DEFAULT_VEL },
-    { ...DEFAULT_FACE }
+    { ...DEFAULT_FACE },
   );
 
   World.players.set(id, player);
@@ -49,9 +53,11 @@ eventBus.on('cmd:move', (e: TCmdMoveEvent) => {
   // Check if movement direction actually changed to avoid redundant processing
   const lastDir = lastMoveDir.get(e.playerId);
   const EPSILON = 0.001; // Small threshold for floating point comparison
-  if (lastDir &&
+  if (
+    lastDir &&
     Math.abs(lastDir.x - x) < EPSILON &&
-    Math.abs(lastDir.y - y) < EPSILON) {
+    Math.abs(lastDir.y - y) < EPSILON
+  ) {
     return; // Direction hasn't changed, skip processing
   }
 
@@ -61,9 +67,10 @@ eventBus.on('cmd:move', (e: TCmdMoveEvent) => {
   const len = Math.hypot(x, y) || 1;
   // update velocity with haste if active
   const baseSpeed = Config.player.speed;
-  const speed = (player.hasteUntil && player.hasteUntil > Date.now() && player.hasteFactor)
-    ? baseSpeed * player.hasteFactor
-    : baseSpeed;
+  const speed =
+    player.hasteUntil && player.hasteUntil > Date.now() && player.hasteFactor
+      ? baseSpeed * player.hasteFactor
+      : baseSpeed;
   player.vel = { x: (x / len) * speed, y: (y / len) * speed };
 });
 
@@ -103,10 +110,12 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
       owner: p.id,
       pos,
       vel,
-      kind: 'bullet'
+      kind: 'bullet',
     });
     World.projectiles.set(id, projectile);
-    eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'bullet').toEmit());
+    eventBus.emit(
+      new ProjectileSpawnedEvent(id, p.id, pos, vel, 'bullet').toEmit(),
+    );
 
     // Track shot fired for accuracy
     p.addShotFired();
@@ -121,7 +130,8 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
     // Facing direction
     const face = p.face ?? { x: 1, y: 0 };
     const fmag = Math.hypot(face.x, face.y) || 1;
-    const fx = face.x / fmag, fy = face.y / fmag;
+    const fx = face.x / fmag,
+      fy = face.y / fmag;
 
     // Base orthogonal for angle offset
     const pelletCount = Config.projectiles.pellet.count;
@@ -131,7 +141,8 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
       // Even distribution of angles in [-maxSpread, +maxSpread]
       const t = pelletCount <= 1 ? 0 : (i / (pelletCount - 1)) * 2 - 1; // [-1,1]
       const ang = t * maxSpread;
-      const cs = Math.cos(ang), sn = Math.sin(ang);
+      const cs = Math.cos(ang),
+        sn = Math.sin(ang);
       const dx = cs * fx - sn * fy;
       const dy = sn * fx + cs * fy;
 
@@ -143,10 +154,12 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
         owner: p.id,
         pos,
         vel,
-        kind: 'pellet'
+        kind: 'pellet',
       });
       World.projectiles.set(id, projectile);
-      eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'pellet').toEmit());
+      eventBus.emit(
+        new ProjectileSpawnedEvent(id, p.id, pos, vel, 'pellet').toEmit(),
+      );
 
       // Each pellet counts as a shot fired for accuracy
       p.addShotFired();
@@ -161,7 +174,8 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
 
     const face = p.face ?? { x: 1, y: 0 };
     const fmag = Math.hypot(face.x, face.y) || 1;
-    const fx = face.x / fmag, fy = face.y / fmag;
+    const fx = face.x / fmag,
+      fy = face.y / fmag;
     const speed = Config.projectiles.rocket.speed; // rocket speed from config
     const vel = { x: fx * speed, y: fy * speed };
 
@@ -173,10 +187,12 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
       pos,
       vel,
       kind: 'rocket',
-      hitRadius: Config.projectiles.rocket.hitRadius
+      hitRadius: Config.projectiles.rocket.hitRadius,
     });
     World.projectiles.set(id, projectile);
-    eventBus.emit(new ProjectileSpawnedEvent(id, p.id, pos, vel, 'rocket').toEmit());
+    eventBus.emit(
+      new ProjectileSpawnedEvent(id, p.id, pos, vel, 'rocket').toEmit(),
+    );
 
     // Track rocket shot for accuracy
     p.addShotFired();
@@ -199,7 +215,7 @@ eventBus.on('cmd:cast', (e: TCmdCastEvent) => {
 eventBus.on('cmd:leave', (e: TCmdLeaveEvent) => {
   // Remove the player from the world
   World.players.delete(e.playerId);
-  eventBus.emit(new PlayerDiedEvent(e.playerId).toEmit())
+  eventBus.emit(new PlayerDiedEvent(e.playerId).toEmit());
   // Clean up movement tracking
   lastMoveDir.delete(e.playerId);
 });

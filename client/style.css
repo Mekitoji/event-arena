@@ -1,5 +1,16 @@
-html, body { margin: 0; height: 100%; background: #111; color: #eee; display: grid; place-items: center; }
-canvas { background: #222; border: 1px solid #333; }
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #111;
+  color: #eee;
+  display: grid;
+  place-items: center;
+}
+canvas {
+  background: #222;
+  border: 1px solid #333;
+}
 
 /* Sound controls (bottom-right) */
 .sound-ui {
@@ -25,9 +36,16 @@ canvas { background: #222; border: 1px solid #333; }
   border-radius: 6px;
   cursor: pointer;
 }
-.sound-btn[aria-pressed="true"] {
+.sound-btn[aria-pressed='true'] {
   background: #401818;
   border-color: #804040;
 }
-.sound-range { width: 120px; }
-.sound-label { font-size: 12px; color: #ccc; min-width: 36px; text-align: right; }
+.sound-range {
+  width: 120px;
+}
+.sound-label {
+  font-size: 12px;
+  color: #ccc;
+  min-width: 36px;
+  text-align: right;
+}

@@ -1,4 +1,10 @@
-import { IEffect, EffectType, EffectEvent, EffectEventCallback, EffectJSON } from './types';
+import {
+  IEffect,
+  EffectType,
+  EffectEvent,
+  EffectEventCallback,
+  EffectJSON,
+} from './types';
 
 /**
  * Manages effects for a single player
@@ -12,7 +18,7 @@ export class EffectManager {
     this.playerId = playerId;
 
     // Initialize event callback arrays
-    Object.values(EffectEvent).forEach(event => {
+    Object.values(EffectEvent).forEach((event) => {
       this.eventCallbacks.set(event, []);
     });
   }
@@ -208,7 +214,7 @@ export class EffectManager {
    * Serialize all effects for network transmission
    */
   public toJSON(): EffectJSON[] {
-    return Array.from(this.effects.values()).map(effect => effect.toJSON());
+    return Array.from(this.effects.values()).map((effect) => effect.toJSON());
   }
 
   /**
@@ -225,7 +231,7 @@ export class EffectManager {
     return {
       playerId: this.playerId,
       totalEffects: this.effects.size,
-      effectsByType: summary
+      effectsByType: summary,
     };
   }
 

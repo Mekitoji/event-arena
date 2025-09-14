@@ -1,17 +1,17 @@
-import { eventBus } from "../core/event-bus";
-import { World } from "../core/world";
-import { Player } from "../entities/player";
-import { SpawnManager } from "../core/spawn-manager";
-import { Vec2 } from "../core/types/vec2.type";
-import { Skills } from "../core/types/cmd.type";
-import { Config } from "../config";
+import { eventBus } from '../core/event-bus';
+import { World } from '../core/world';
+import { Player } from '../entities/player';
+import { SpawnManager } from '../core/spawn-manager';
+import { Vec2 } from '../core/types/vec2.type';
+import { Skills } from '../core/types/cmd.type';
+import { Config } from '../config';
 import {
   PlayerJoinedEvent,
   PlayerAimCmdEvent,
   PlayerMoveCmdEvent,
   PlayerCastCmdEvent,
-} from "../events";
-import { TCmdLeaveEvent, TPlayerDieEvent } from "../core/types/events.type";
+} from '../events';
+import { TCmdLeaveEvent, TPlayerDieEvent } from '../core/types/events.type';
 
 interface BotState {
   id: string;
@@ -30,7 +30,9 @@ export class BotManager {
   private readonly SEP_RADIUS = 120;
   private readonly SEP_STRENGTH = 0.7;
 
-  private readonly spawnManager = new SpawnManager({ minDistanceFromPlayers: 220 });
+  private readonly spawnManager = new SpawnManager({
+    minDistanceFromPlayers: 220,
+  });
   private readonly botIds = new Set<string>();
   private readonly bots = new Map<string, BotState>();
 
@@ -79,17 +81,19 @@ export class BotManager {
 
     const now = Date.now();
     this.botIds.add(id);
-    this.bots.set(id, { 
-      id, 
-      name, 
+    this.bots.set(id, {
+      id,
+      name,
       nextThinkAt: now + Math.floor(Math.random() * this.THINK_INTERVAL_MS),
-      nextFireAt: now + this.FIRE_COOLDOWN_MS 
+      nextFireAt: now + this.FIRE_COOLDOWN_MS,
     });
     return id;
   }
 
   private ensureBots() {
-    const current = Array.from(this.botIds).filter(id => World.players.has(id)).length;
+    const current = Array.from(this.botIds).filter((id) =>
+      World.players.has(id),
+    ).length;
     for (let i = current; i < this.BOT_COUNT; i++) this.spawnBot();
   }
 
@@ -103,7 +107,10 @@ export class BotManager {
       if (this.botIds.has(pid)) continue;
       if (p.isDeadPlayer()) continue;
       const d = Math.hypot(p.pos.x - me.pos.x, p.pos.y - me.pos.y);
-      if (d < bestDist) { bestDist = d; best = { id: pid, pos: p.pos }; }
+      if (d < bestDist) {
+        bestDist = d;
+        best = { id: pid, pos: p.pos };
+      }
     }
     return best;
   }
@@ -136,7 +143,8 @@ export class BotManager {
   private separationVector(botId: string): Vec2 {
     const me = World.players.get(botId);
     if (!me) return { x: 0, y: 0 };
-    let sx = 0, sy = 0;
+    let sx = 0,
+      sy = 0;
     for (const otherId of this.botIds) {
       if (otherId === botId) continue;
       const other = World.players.get(otherId);
@@ -186,8 +194,10 @@ export class BotManager {
 
     const aim = me.faceTarget ?? me.face;
     const amag = Math.hypot(aim.x, aim.y) || 1;
-    const ax = aim.x / amag, ay = aim.y / amag;
-    const nx = dx / (dist || 1), ny = dy / (dist || 1);
+    const ax = aim.x / amag,
+      ay = aim.y / amag;
+    const nx = dx / (dist || 1),
+      ny = dy / (dist || 1);
     const dot = ax * nx + ay * ny;
     if (dot < 0.7) return;
 

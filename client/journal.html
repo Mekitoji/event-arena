@@ -5,19 +5,74 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Event Journal Browser</title>
     <style>
-      body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
-      header { display: flex; align-items: center; gap: 12px; }
-      h1 { font-size: 20px; margin: 0; }
-      .row { display: flex; gap: 12px; align-items: center; margin: 12px 0; }
-      table { border-collapse: collapse; width: 100%; }
-      th, td { border: 1px solid #ddd; padding: 8px; font-size: 14px; }
-      th { background: #f7f7f7; text-align: left; }
-      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-      .badge { background: #eef; padding: 2px 6px; border-radius: 4px; font-size: 12px; }
-      .muted { color: #666; }
-      .btn { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; background: #fff; cursor: pointer; }
-      .btn:hover { background: #f4f4f4; }
-      pre { background: #111; color: #ddd; padding: 12px; border-radius: 8px; overflow: auto; max-height: 50vh; }
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          Segoe UI,
+          Roboto,
+          sans-serif;
+        margin: 16px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0;
+      }
+      .row {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin: 12px 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        font-size: 14px;
+      }
+      th {
+        background: #f7f7f7;
+        text-align: left;
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      .badge {
+        background: #eef;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-size: 12px;
+      }
+      .muted {
+        color: #666;
+      }
+      .btn {
+        padding: 6px 10px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+      }
+      .btn:hover {
+        background: #f4f4f4;
+      }
+      pre {
+        background: #111;
+        color: #ddd;
+        padding: 12px;
+        border-radius: 8px;
+        overflow: auto;
+        max-height: 50vh;
+      }
     </style>
   </head>
   <body>
@@ -28,8 +83,12 @@
 
     <section class="row">
       <button id="refresh" class="btn">Refresh</button>
-      <label>Filter by Match ID: <input id="matchId" placeholder="match_..." /></label>
-      <label>Filter by Player ID: <input id="playerId" placeholder="player UUID" /></label>
+      <label
+        >Filter by Match ID: <input id="matchId" placeholder="match_..."
+      /></label>
+      <label
+        >Filter by Player ID: <input id="playerId" placeholder="player UUID"
+      /></label>
     </section>
 
     <section>
@@ -57,4 +116,3 @@
     <script src="/journal.js" type="module"></script>
   </body>
 </html>
-

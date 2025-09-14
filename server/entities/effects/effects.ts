@@ -1,4 +1,4 @@
-import { Vec2 } from "../../core/types/vec2.type";
+import { Vec2 } from '../../core/types/vec2.type';
 import { BaseEffect } from './base-effect';
 import {
   EffectType,
@@ -12,19 +12,24 @@ import {
   HealPulseData,
   ShieldGlowData,
   HasteTrailData,
-  InvulnerabilityData
+  InvulnerabilityData,
 } from './types';
 
 /**
  * Damage flash effect shown when a player takes damage
  */
 export class DamageFlashEffect extends BaseEffect<DamageFlashData> {
-  constructor(id: string, startTime: number, damage: number, flashColor: string = '#ff0000') {
+  constructor(
+    id: string,
+    startTime: number,
+    damage: number,
+    flashColor: string = '#ff0000',
+  ) {
     const data: DamageFlashData = {
       damage,
       flashColor,
       intensity: Math.min(1.0, damage / 50), // Scale intensity based on damage
-      alpha: 0.6
+      alpha: 0.6,
     };
 
     super(id, EffectType.DAMAGE_FLASH, startTime, 180, data); // 180ms duration
@@ -47,13 +52,19 @@ export class DamageFlashEffect extends BaseEffect<DamageFlashData> {
  * Death ring effect shown when a player dies
  */
 export class DeathRingEffect extends BaseEffect<DeathRingData> {
-  constructor(id: string, startTime: number, position: Vec2, maxRadius: number = 26, ringColor: string = '#000000') {
+  constructor(
+    id: string,
+    startTime: number,
+    position: Vec2,
+    maxRadius: number = 26,
+    ringColor: string = '#000000',
+  ) {
     const data: DeathRingData = {
       position: { ...position },
       maxRadius,
       ringColor,
       intensity: 1.0,
-      alpha: 1.0
+      alpha: 1.0,
     };
 
     super(id, EffectType.DEATH_RING, startTime, 450, data); // 450ms duration
@@ -78,13 +89,18 @@ export class DeathRingEffect extends BaseEffect<DeathRingData> {
  * Dash trail effect shown when a player is dashing
  */
 export class DashTrailEffect extends BaseEffect<DashTrailData> {
-  constructor(id: string, startTime: number, duration: number, trailColor: string = '#9696ff') {
+  constructor(
+    id: string,
+    startTime: number,
+    duration: number,
+    trailColor: string = '#9696ff',
+  ) {
     const data: DashTrailData = {
       positions: [],
       trailColor,
       maxTrailLength: 120, // ms
       intensity: 0.35,
-      alpha: 0.35
+      alpha: 0.35,
     };
 
     super(id, EffectType.DASH_TRAIL, startTime, duration, data);
@@ -95,7 +111,10 @@ export class DashTrailEffect extends BaseEffect<DashTrailData> {
 
     // Keep only positions within maxTrailLength
     const cutoff = timestamp - this.data.maxTrailLength;
-    while (this.data.positions.length > 0 && this.data.positions[0].timestamp < cutoff) {
+    while (
+      this.data.positions.length > 0 &&
+      this.data.positions[0].timestamp < cutoff
+    ) {
       this.data.positions.shift();
     }
   }
@@ -107,7 +126,10 @@ export class DashTrailEffect extends BaseEffect<DashTrailData> {
 
     // Clean up old positions
     const cutoff = currentTime - this.data.maxTrailLength;
-    while (this.data.positions.length > 0 && this.data.positions[0].timestamp < cutoff) {
+    while (
+      this.data.positions.length > 0 &&
+      this.data.positions[0].timestamp < cutoff
+    ) {
       this.data.positions.shift();
     }
 
@@ -119,14 +141,21 @@ export class DashTrailEffect extends BaseEffect<DashTrailData> {
  * Explosion effect for rocket impacts and area damage
  */
 export class ExplosionEffect extends BaseEffect<ExplosionData> {
-  constructor(id: string, startTime: number, position: Vec2, radius: number, damage: number, explosionColor: string = '#ff7800') {
+  constructor(
+    id: string,
+    startTime: number,
+    position: Vec2,
+    radius: number,
+    damage: number,
+    explosionColor: string = '#ff7800',
+  ) {
     const data: ExplosionData = {
       position: { ...position },
       radius,
       damage,
       explosionColor,
       intensity: 1.0,
-      alpha: 1.0
+      alpha: 1.0,
     };
 
     super(id, EffectType.EXPLOSION, startTime, 350, data); // 350ms duration
@@ -150,13 +179,19 @@ export class ExplosionEffect extends BaseEffect<ExplosionData> {
  * Spark effect for projectile bounces
  */
 export class SparkEffect extends BaseEffect<SparkData> {
-  constructor(id: string, startTime: number, position: Vec2, direction: Vec2, sparkColor: string = '#ffc864') {
+  constructor(
+    id: string,
+    startTime: number,
+    position: Vec2,
+    direction: Vec2,
+    sparkColor: string = '#ffc864',
+  ) {
     const data: SparkData = {
       position: { ...position },
       direction: { ...direction },
       sparkColor,
       intensity: 1.0,
-      alpha: 1.0
+      alpha: 1.0,
     };
 
     super(id, EffectType.SPARK, startTime, 150, data); // 150ms duration
@@ -184,7 +219,7 @@ export class KnockbackEffect extends BaseEffect<KnockbackData> {
       velocity: { ...velocity },
       power,
       intensity: power,
-      alpha: 1.0
+      alpha: 1.0,
     };
 
     super(id, EffectType.KNOCKBACK, startTime, 120, data); // 120ms duration
@@ -207,12 +242,18 @@ export class KnockbackEffect extends BaseEffect<KnockbackData> {
  * Camera shake effect
  */
 export class CameraShakeEffect extends BaseEffect<CameraShakeData> {
-  constructor(id: string, startTime: number, amplitude: number, frequency: number = 30, duration: number = 120) {
+  constructor(
+    id: string,
+    startTime: number,
+    amplitude: number,
+    frequency: number = 30,
+    duration: number = 120,
+  ) {
     const data: CameraShakeData = {
       amplitude,
       frequency,
       intensity: amplitude,
-      alpha: 1.0
+      alpha: 1.0,
     };
 
     super(id, EffectType.CAMERA_SHAKE, startTime, duration, data);
@@ -225,7 +266,8 @@ export class CameraShakeEffect extends BaseEffect<CameraShakeData> {
 
     // Reduce shake amplitude over time
     const progress = this.getProgress(currentTime);
-    this.data.intensity = this.data.amplitude * (1 - this.easeOutQuad(progress));
+    this.data.intensity =
+      this.data.amplitude * (1 - this.easeOutQuad(progress));
 
     return true;
   }
@@ -235,12 +277,17 @@ export class CameraShakeEffect extends BaseEffect<CameraShakeData> {
  * Heal pulse effect shown when a player is healed
  */
 export class HealPulseEffect extends BaseEffect<HealPulseData> {
-  constructor(id: string, startTime: number, healAmount: number, pulseColor: string = '#00ff00') {
+  constructor(
+    id: string,
+    startTime: number,
+    healAmount: number,
+    pulseColor: string = '#00ff00',
+  ) {
     const data: HealPulseData = {
       healAmount,
       pulseColor,
       intensity: Math.min(1.0, healAmount / 50),
-      alpha: 0.8
+      alpha: 0.8,
     };
 
     super(id, EffectType.HEAL_PULSE, startTime, 300, data); // 300ms duration
@@ -263,12 +310,17 @@ export class HealPulseEffect extends BaseEffect<HealPulseData> {
  * Shield glow effect for players with shield buff
  */
 export class ShieldGlowEffect extends BaseEffect<ShieldGlowData> {
-  constructor(id: string, startTime: number, duration: number, glowColor: string = '#ffff88') {
+  constructor(
+    id: string,
+    startTime: number,
+    duration: number,
+    glowColor: string = '#ffff88',
+  ) {
     const data: ShieldGlowData = {
       glowColor,
       pulseSpeed: 2.0,
       intensity: 1.0,
-      alpha: 0.4
+      alpha: 0.4,
     };
 
     super(id, EffectType.SHIELD_GLOW, startTime, duration, data);
@@ -291,12 +343,18 @@ export class ShieldGlowEffect extends BaseEffect<ShieldGlowData> {
  * Haste trail effect for players with speed buff
  */
 export class HasteTrailEffect extends BaseEffect<HasteTrailData> {
-  constructor(id: string, startTime: number, duration: number, speedMultiplier: number, trailColor: string = '#00ffff') {
+  constructor(
+    id: string,
+    startTime: number,
+    duration: number,
+    speedMultiplier: number,
+    trailColor: string = '#00ffff',
+  ) {
     const data: HasteTrailData = {
       trailColor,
       speedMultiplier,
       intensity: speedMultiplier,
-      alpha: 0.3
+      alpha: 0.3,
     };
 
     super(id, EffectType.HASTE_TRAIL, startTime, duration, data);
@@ -319,11 +377,16 @@ export class HasteTrailEffect extends BaseEffect<HasteTrailData> {
  * Invulnerability effect for players with iframes
  */
 export class InvulnerabilityEffect extends BaseEffect<InvulnerabilityData> {
-  constructor(id: string, startTime: number, duration: number, flickerRate: number = 8) {
+  constructor(
+    id: string,
+    startTime: number,
+    duration: number,
+    flickerRate: number = 8,
+  ) {
     const data: InvulnerabilityData = {
       flickerRate,
       intensity: 1.0,
-      alpha: 1.0
+      alpha: 1.0,
     };
 
     super(id, EffectType.INVULNERABILITY, startTime, duration, data);

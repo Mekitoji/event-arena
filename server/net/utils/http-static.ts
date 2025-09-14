@@ -7,7 +7,7 @@ const MIME: Record<string, string> = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.png': 'image/png',
-  '.jpg': 'image/jpeg'
+  '.jpg': 'image/jpeg',
 } as const;
 
 export function createHttpServer(pubDir = 'public', port = 8080) {
@@ -43,7 +43,9 @@ export function createHttpServer(pubDir = 'public', port = 8080) {
     }
   });
 
-  server.listen(port, () => console.log(`HTTP static on http://localhost:${port}`));
+  server.listen(port, () =>
+    console.log(`HTTP static on http://localhost:${port}`),
+  );
 
   return server;
 }

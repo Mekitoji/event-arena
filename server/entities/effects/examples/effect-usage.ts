@@ -1,18 +1,17 @@
-import { Player } from "../../player";
-import { Vec2 } from "../../../core/types/vec2.type";
+import { Player } from '../../player';
+import { Vec2 } from '../../../core/types/vec2.type';
 import {
   EffectFactory,
   EffectCombinations,
   EffectType,
   EffectEvent,
-  DashTrailEffect
-} from "../index";
+  DashTrailEffect,
+} from '../index';
 
 /**
  * Example usage of the Effect Manager system
  */
 export class EffectUsageExamples {
-
   /**
    * Example: Creating a player and applying damage with effects
    */
@@ -28,7 +27,7 @@ export class EffectUsageExamples {
 
     // The takeDamage method automatically creates:
     // - Damage flash effect
-    // - Knockback effect  
+    // - Knockback effect
     // - Camera shake effect (for significant damage)
   }
 
@@ -41,14 +40,17 @@ export class EffectUsageExamples {
     // Apply haste buff (includes visual trail effect)
     player.applyHaste(5000, 1.8); // 5 seconds, 1.8x speed
 
-    // Apply shield buff (includes glow effect)  
+    // Apply shield buff (includes glow effect)
     player.applyShield(8000); // 8 seconds
 
     // Apply dash with trail and invulnerability effects
     player.applyDash(300, 3.0, true); // 300ms dash with iframes
 
     console.log(`Player has ${player.effects.getEffectCount()} active effects`);
-    console.log('Effect types:', player.effects.getAllEffects().map(e => e.type));
+    console.log(
+      'Effect types:',
+      player.effects.getAllEffects().map((e) => e.type),
+    );
   }
 
   /**
@@ -61,9 +63,9 @@ export class EffectUsageExamples {
     const explosion = EffectFactory.createExplosion(
       player.id,
       player.pos,
-      75,  // radius
-      50,  // damage
-      '#ff4400' // custom color
+      75, // radius
+      50, // damage
+      '#ff4400', // custom color
     );
 
     player.addEffect(explosion);
@@ -71,7 +73,7 @@ export class EffectUsageExamples {
     // Create spark effect for projectile bounce
     const spark = EffectFactory.createSpark(
       { x: player.pos.x + 20, y: player.pos.y },
-      { x: -1, y: 0.5 } // direction
+      { x: -1, y: 0.5 }, // direction
     );
 
     player.addEffect(spark);
@@ -105,9 +107,13 @@ export class EffectUsageExamples {
       player.updateEffects();
 
       // Get dash trail effect
-      const dashTrail = player.effects.getEffectByType(EffectType.DASH_TRAIL) as DashTrailEffect;
+      const dashTrail = player.effects.getEffectByType(
+        EffectType.DASH_TRAIL,
+      ) as DashTrailEffect;
       if (dashTrail) {
-        console.log(`Dash trail has ${dashTrail.data.positions?.length} position points`);
+        console.log(
+          `Dash trail has ${dashTrail.data.positions?.length} position points`,
+        );
       }
 
       // Stop when dash ends
@@ -129,10 +135,10 @@ export class EffectUsageExamples {
       player.id,
       40,
       'explosion',
-      { x: -0.7, y: -0.7 }
+      { x: -0.7, y: -0.7 },
     );
 
-    explosionEffects.forEach(effect => player.addEffect(effect));
+    explosionEffects.forEach((effect) => player.addEffect(effect));
 
     // Player dies from damage
     if (player.hp <= 0) {
@@ -145,7 +151,9 @@ export class EffectUsageExamples {
       player.updateEffects();
       time += 50;
 
-      console.log(`Time: ${time}ms, Active effects: ${player.effects.getEffectCount()}`);
+      console.log(
+        `Time: ${time}ms, Active effects: ${player.effects.getEffectCount()}`,
+      );
 
       if (time >= 1000) {
         clearInterval(simulationInterval);

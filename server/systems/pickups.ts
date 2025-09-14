@@ -1,13 +1,13 @@
-import { eventBus } from "../core/event-bus";
-import { TTickPostEvent } from "../core/types/events.type";
-import { World } from "../core/world";
-import { SpawnManager } from "../core/spawn-manager";
+import { eventBus } from '../core/event-bus';
+import { TTickPostEvent } from '../core/types/events.type';
+import { World } from '../core/world';
+import { SpawnManager } from '../core/spawn-manager';
 import {
   PickupSpawnedEvent,
   PickupCollectedEvent,
   BuffAppliedEvent,
-  BuffExpiredEvent
-} from "../events";
+  BuffExpiredEvent,
+} from '../events';
 
 const SPAWN_INTERVAL_MS = 5000;
 const PLAYER_PICK_RADIUS = 20;
@@ -19,7 +19,7 @@ const pickupSpawnManager = new SpawnManager({
   minDistanceFromPlayers: 180,
   margins: {
     left: 100,
-    right: 100, 
+    right: 100,
     top: 100,
     bottom: 100,
   },
@@ -69,7 +69,8 @@ eventBus.on('tick:post', ({ dt }: TTickPostEvent) => {
   const now = Date.now();
   for (const p of World.players.values()) {
     if (p.hasteUntil && p.hasteUntil <= now) {
-      p.hasteUntil = undefined; p.hasteFactor = undefined;
+      p.hasteUntil = undefined;
+      p.hasteFactor = undefined;
       eventBus.emit(new BuffExpiredEvent(p.id, 'haste').toEmit());
     }
     if (p.shieldUntil && p.shieldUntil <= now) {
@@ -78,4 +79,3 @@ eventBus.on('tick:post', ({ dt }: TTickPostEvent) => {
     }
   }
 });
-

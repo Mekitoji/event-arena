@@ -6,4 +6,6 @@ const dir = process.env.DIR || 'client';
 
 createHttpServer(dir, port);
 
-console.log(`Static server started on http://localhost:${port}, serving ./${dir}`);
+console.log(
+  `Static server started on http://localhost:${port}, serving ./${dir}`,
+);

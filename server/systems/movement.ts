@@ -1,6 +1,10 @@
-import { eventBus } from "../core/event-bus";
-import { TCmdLeaveEvent, TPlayerJoinEvent, TTickPreEvent } from "../core/types/events.type";
-import { World } from "../core/world";
+import { eventBus } from '../core/event-bus';
+import {
+  TCmdLeaveEvent,
+  TPlayerJoinEvent,
+  TTickPreEvent,
+} from '../core/types/events.type';
+import { World } from '../core/world';
 import {
   ProjectileDespawnedEvent,
   ProjectileMovedEvent,
@@ -8,9 +12,9 @@ import {
   DashEndedEvent,
   ExplosionSpawnedEvent,
   PlayerMovedEvent,
-  PlayerAimedEvent
-} from "../events";
-import { Config } from "../config";
+  PlayerAimedEvent,
+} from '../events';
+import { Config } from '../config';
 
 const EPS = Config.combat.movementThreshold; // Minimum movement threshold to broadcast
 const lastBroadcastPos = new Map<string, { x: number; y: number }>();
@@ -23,21 +27,36 @@ const HB_INTERVAL_MS = Config.combat.heartbeatInterval; // ~250–300 ms
 let hbAccumMs = 0;
 const lastHBPos = new Map<string, { x: number; y: number }>();
 
-function rotateToward(u: { x: number; y: number }, v: { x: number; y: number }, maxStep: number) {
+function rotateToward(
+  u: { x: number; y: number },
+  v: { x: number; y: number },
+  maxStep: number,
+) {
   // assumes u is unit, v is unit
   const dot = Math.max(-1, Math.min(1, u.x * v.x + u.y * v.y));
   const ang = Math.acos(dot);
   if (ang <= maxStep) return { x: v.x, y: v.y };
   // perpendicular to u
   const n = { x: -u.y, y: u.x };
-  const sign = (v.x * n.x + v.y * n.y) >= 0 ? 1 : -1;
-  const cs = Math.cos(maxStep), sn = Math.sin(maxStep) * sign;
+  const sign = v.x * n.x + v.y * n.y >= 0 ? 1 : -1;
+  const cs = Math.cos(maxStep),
+    sn = Math.sin(maxStep) * sign;
   return { x: cs * u.x + sn * n.x, y: cs * u.y + sn * n.y };
 }
 
 // basic AABB helpers
-function clamp(v: number, lo: number, hi: number) { return Math.max(lo, Math.min(hi, v)); }
-function resolveCircleRect(px: number, py: number, r: number, rx: number, ry: number, rw: number, rh: number) {
+function clamp(v: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, v));
+}
+function resolveCircleRect(
+  px: number,
+  py: number,
+  r: number,
+  rx: number,
+  ry: number,
+  rw: number,
+  rh: number,
+) {
   // find closest point on rect to circle center
   const cx = clamp(px, rx, rx + rw);
   const cy = clamp(py, ry, ry + rh);
@@ -46,42 +65,74 @@ function resolveCircleRect(px: number, py: number, r: number, rx: number, ry: nu
   const dist2 = dx * dx + dy * dy;
   if (dist2 > r * r) return { px, py, collided: false };
   const dist = Math.sqrt(dist2) || 1;
-  const nx = dx / dist, ny = dy / dist;
+  const nx = dx / dist,
+    ny = dy / dist;
   // push out by penetration
   const pen = r - dist;
   return { px: px + nx * pen, py: py + ny * pen, collided: true };
 }
 
 function resolveCircleWorld(px: number, py: number, r: number) {
-  let outx = px, outy = py; let hit = false;
+  let outx = px,
+    outy = py;
+  let hit = false;
   for (const ob of World.map.obstacles) {
     if (ob.type !== 'rect') continue;
     const res = resolveCircleRect(outx, outy, r, ob.x, ob.y, ob.w, ob.h);
-    if (res.collided) { outx = res.px; outy = res.py; hit = true; }
+    if (res.collided) {
+      outx = res.px;
+      outy = res.py;
+      hit = true;
+    }
   }
   return { x: outx, y: outy, hit };
 }
 
-function checkPointInRect(x: number, y: number, rx: number, ry: number, rw: number, rh: number) {
+function checkPointInRect(
+  x: number,
+  y: number,
+  rx: number,
+  ry: number,
+  rw: number,
+  rh: number,
+) {
   return x >= rx && x <= rx + rw && y >= ry && y <= ry + rh;
 }
 
-function collideProjectile(pr: { pos: { x: number, y: number }, vel: { x: number, y: number }, kind?: string }) {
+function collideProjectile(pr: {
+  pos: { x: number; y: number };
+  vel: { x: number; y: number };
+  kind?: string;
+}) {
   // after position update, if inside any rect, compute normal and bounce/delete
   for (const ob of World.map.obstacles) {
     if (ob.type !== 'rect') continue;
     if (checkPointInRect(pr.pos.x, pr.pos.y, ob.x, ob.y, ob.w, ob.h)) {
       // normal by smallest penetration; sample distances to each side
       const leftPen = Math.abs(pr.pos.x - ob.x);
-      const rightPen = Math.abs((ob.x + ob.w) - pr.pos.x);
+      const rightPen = Math.abs(ob.x + ob.w - pr.pos.x);
       const topPen = Math.abs(pr.pos.y - ob.y);
-      const botPen = Math.abs((ob.y + ob.h) - pr.pos.y);
+      const botPen = Math.abs(ob.y + ob.h - pr.pos.y);
       const minPen = Math.min(leftPen, rightPen, topPen, botPen);
-      let nx = 0, ny = 0;
-      if (minPen === leftPen) { nx = -1; ny = 0; pr.pos.x = ob.x - 0.01; }
-      else if (minPen === rightPen) { nx = 1; ny = 0; pr.pos.x = ob.x + ob.w + 0.01; }
-      else if (minPen === topPen) { nx = 0; ny = -1; pr.pos.y = ob.y - 0.01; }
-      else { nx = 0; ny = 1; pr.pos.y = ob.y + ob.h + 0.01; }
+      let nx = 0,
+        ny = 0;
+      if (minPen === leftPen) {
+        nx = -1;
+        ny = 0;
+        pr.pos.x = ob.x - 0.01;
+      } else if (minPen === rightPen) {
+        nx = 1;
+        ny = 0;
+        pr.pos.x = ob.x + ob.w + 0.01;
+      } else if (minPen === topPen) {
+        nx = 0;
+        ny = -1;
+        pr.pos.y = ob.y - 0.01;
+      } else {
+        nx = 0;
+        ny = 1;
+        pr.pos.y = ob.y + ob.h + 0.01;
+      }
       return { hit: true, normal: { x: nx, y: ny } };
     }
   }
@@ -91,10 +142,12 @@ function collideProjectile(pr: { pos: { x: number, y: number }, vel: { x: number
 eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
   for (const p of World.players.values()) {
     if (p.isDeadPlayer()) continue; // Skip movement for dead players
-    const oldX = p.pos.x, oldY = p.pos.y;
+    const oldX = p.pos.x,
+      oldY = p.pos.y;
 
     // Effective speed (movement + knockback if active)
-    let vx = p.vel.x, vy = p.vel.y;
+    let vx = p.vel.x,
+      vy = p.vel.y;
     // dash boost
     const now = Date.now();
     const dashActive = p.dashUntil && p.dashUntil > now;
@@ -127,7 +180,8 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
       p.pos.x = Math.max(0, Math.min(World.bounds.w, p.pos.x + vx * subDt));
       p.pos.y = Math.max(0, Math.min(World.bounds.h, p.pos.y + vy * subDt));
       const solved = resolveCircleWorld(p.pos.x, p.pos.y, rr);
-      p.pos.x = solved.x; p.pos.y = solved.y;
+      p.pos.x = solved.x;
+      p.pos.y = solved.y;
     }
 
     // Rotate face toward the target direction with limited speed
@@ -144,15 +198,16 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
 
     // If actually moved — check against the last broadcast position
     const lb = lastBroadcastPos.get(p.id);
-    const movedNow = Math.abs(p.pos.x - oldX) > EPS || Math.abs(p.pos.y - oldY) > EPS;
+    const movedNow =
+      Math.abs(p.pos.x - oldX) > EPS || Math.abs(p.pos.y - oldY) > EPS;
     const changedSinceLastSend =
-      !lb ||
-      Math.abs(p.pos.x - lb.x) > EPS ||
-      Math.abs(p.pos.y - lb.y) > EPS;
+      !lb || Math.abs(p.pos.x - lb.x) > EPS || Math.abs(p.pos.y - lb.y) > EPS;
 
     const lf = lastFace.get(p.id);
     const faceChanged =
-      !lf || Math.abs((p.face?.x ?? 0) - lf.x) > 1e-3 || Math.abs((p.face?.y ?? 0) - lf.y) > 1e-3;
+      !lf ||
+      Math.abs((p.face?.x ?? 0) - lf.x) > 1e-3 ||
+      Math.abs((p.face?.y ?? 0) - lf.y) > 1e-3;
 
     if (movedNow && changedSinceLastSend) {
       lastBroadcastPos.set(p.id, { x: p.pos.x, y: p.pos.y });
@@ -160,7 +215,9 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
     }
     if (faceChanged && p.face) {
       lastFace.set(p.id, { x: p.face.x, y: p.face.y });
-      eventBus.emit(new PlayerAimedEvent(p.id, { x: p.face.x, y: p.face.y }).toEmit());
+      eventBus.emit(
+        new PlayerAimedEvent(p.id, { x: p.face.x, y: p.face.y }).toEmit(),
+      );
     }
   }
 
@@ -171,7 +228,11 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
     for (const p of World.players.values()) {
       if (p.isDeadPlayer()) continue; // Skip heartbeat for dead players
       const prev = lastHBPos.get(p.id);
-      if (!prev || Math.abs(prev.x - p.pos.x) > 0.01 || Math.abs(prev.y - p.pos.y) > 0.01) {
+      if (
+        !prev ||
+        Math.abs(prev.x - p.pos.x) > 0.01 ||
+        Math.abs(prev.y - p.pos.y) > 0.01
+      ) {
         eventBus.emit(new PlayerMovedEvent(p.id, { ...p.pos }).toEmit());
         lastHBPos.set(p.id, { x: p.pos.x, y: p.pos.y });
       }
@@ -189,7 +250,13 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
     if (pr.isExpired()) {
       // If a rocket expires (i.e., reached its max lifetime without hitting), explode at its current position
       if (pr.kind === 'rocket') {
-        eventBus.emit(new ExplosionSpawnedEvent({ ...pr.pos }, Config.getExplosionRadius(), Config.getExplosionDamage()).toEmit());
+        eventBus.emit(
+          new ExplosionSpawnedEvent(
+            { ...pr.pos },
+            Config.getExplosionRadius(),
+            Config.getExplosionDamage(),
+          ).toEmit(),
+        );
       }
       projectilesToRemove.push(pr.id);
       continue;
@@ -202,7 +269,13 @@ eventBus.on('tick:pre', ({ dt }: TTickPreEvent) => {
         // rocket handled in combat loop when colliding with players; for walls, explode here
         // emulate tick:post logic: remove projectile and emit explosion (reuse damage system by emitting event)
         projectilesToRemove.push(pr.id);
-        eventBus.emit(new ExplosionSpawnedEvent({ ...pr.pos }, Config.getExplosionRadius(), Config.getExplosionDamage()).toEmit());
+        eventBus.emit(
+          new ExplosionSpawnedEvent(
+            { ...pr.pos },
+            Config.getExplosionRadius(),
+            Config.getExplosionDamage(),
+          ).toEmit(),
+        );
         continue;
       } else {
         // Try to bounce using class method

@@ -1,11 +1,11 @@
-import { TProjectileDespawnedEvent } from "../../core/types/events.type";
-import { BaseEvent } from "../abstract";
+import { TProjectileDespawnedEvent } from '../../core/types/events.type';
+import { BaseEvent } from '../abstract';
 
 export class ProjectileDespawnedEvent extends BaseEvent<TProjectileDespawnedEvent> {
   protected readonly type = 'projectile:despawned';
-  constructor(
-    private readonly id: string,
-  ) { super() }
+  constructor(private readonly id: string) {
+    super();
+  }
 
   toEmit(): TProjectileDespawnedEvent {
     return { type: this.type, id: this.id };
@@ -15,4 +15,3 @@ export class ProjectileDespawnedEvent extends BaseEvent<TProjectileDespawnedEven
     return JSON.stringify({ type: this.type, id: this.id });
   }
 }
-
